@@ -23,8 +23,8 @@ teo amin'ny sampana fototra:
 | [Pejin'ny kinova](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
 | [CI sy ny vokatra fanamboarana](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 
-**Mbola tsy misy ireo rakitra alaina raha tsy nahomby sy namoaka kinova ny CI
-voalohany teo amin'ny sampana fototra.** Havaozina isaky ny CI mahomby manaraka
+Nahomby ny [CI voalohany](https://github.com/radomd92/kapila-burner/actions/runs/44952181031)
+ho an'ireo rafitra telo ary efa navoaka ireo rakitra alaina. Havaozina isaky ny CI mahomby manaraka
 ny `continuous`. Ny pull request kosa dia manana artifacts ao amin'ny Actions,
 tehirizina **14 andro**, fa tsy mamoaka kinova ho an'ny daholobe.
 Tsy midika ho fahombiazan'ny fanamboarana rehetra ny fisian'ireo rohy ireo;
@@ -160,8 +160,8 @@ fampandrosoana amin'ny Linux sasany.
 
 Ny CI dia manamboatra ny arisiva telo ary manao tests, vet, GTK smoke amin'ny
 teny telo sy VCD integration amin'ny Linux. **Tsy misy DVD-Audio integration
-amin'ny hosted CI**, ary tsy misy fandoroana kapila ara-batana. Efa voaorina
-eo an-toerana ny Linux; ny cross-compilation web Windows/Darwin dia tsy porofon'ny
-fahombiazan'ny GTK amin'ireo rafitra ireo. Mbola hamarinina amin'ny Actions ny
-hosted builds. Manaova sampana avy amin'ny `main` ary pull request mankany
+amin'ny hosted CI**, ary tsy misy fandoroana kapila ara-batana. Nahomby ny
+fanamboarana sy famoahana ireo rindranasa roa ho an'ny rafitra telo.
+Amin'ny Linux no anaovana ny fitsapana an-tsary GTK; `-h` ihany no andramana
+amin'ny Windows sy macOS. Manaova sampana avy amin'ny `main` ary pull request mankany
 amin'ny `main` raha handray anjara.

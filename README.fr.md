@@ -24,9 +24,8 @@ continue** (`continuous`) :
 | [Page de la préversion](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
 | [Workflow CI et artefacts](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 
-**Ces liens ne deviennent disponibles qu'après la première exécution CI réussie
-sur la branche par défaut et la publication correspondante.** Ils ne constituent
-pas une affirmation que toutes les compilations hébergées réussissent déjà.
+La [première exécution CI hébergée](https://github.com/radomd92/kapila-burner/actions/runs/44952181031)
+a compilé les trois archives avec succès et publié ces téléchargements.
 Chaque exécution réussie suivante actualise cette préversion. Les pull requests
 produisent des artefacts Actions conservés **14 jours**, sans publication de
 release. Les tags `v*` publient des versions distinctes.
@@ -241,7 +240,8 @@ création réelle de VCD avec `VCD_INTEGRATION=1`. **Les outils DVD-Audio ne son
 pas provisionnés et `DVDA_INTEGRATION` n'est pas activé dans la CI hébergée** :
 c'est une vérification locale/manuelle facultative. Aucun test CI ne grave de disque.
 
-Linux a été compilé localement. La compilation croisée web pour Windows et
-Darwin ne valide pas les paquets GTK natifs ; les résultats hébergés restent
-à vérifier dans Actions. Pour contribuer, créez une branche depuis `main`,
+La première exécution hébergée a compilé et publié les deux interfaces pour
+les trois systèmes. Les contrôles graphiques GTK sont exécutés sous Linux ;
+sous Windows et macOS, la vérification se limite au lancement avec `-h`.
+Pour contribuer, créez une branche depuis `main`,
 exécutez les vérifications pertinentes et ouvrez une pull request vers `main`.

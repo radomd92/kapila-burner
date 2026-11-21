@@ -24,9 +24,9 @@ Latest successful default-branch build (rolling **continuous prerelease**):
 | [Release page](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
 | [CI workflow and build artifacts](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 
-These links become available after the **first successful CI run on the default
-branch** publishes the release; they are not a claim that all hosted builds
-already pass. Each later successful default-branch run refreshes it. Pull-request
+The [first hosted CI run](https://github.com/radomd92/kapila-burner/actions/runs/44952181031)
+successfully built all three platform archives and published these downloads.
+Each later successful default-branch run refreshes the release. Pull-request
 builds provide Actions artifacts retained for **14 days**, not public releases.
 Version tags matching `v*` publish separate versioned releases.
 
@@ -85,7 +85,8 @@ Do not expose it to a network. Keep its terminal running and use Ctrl-C to stop 
 ### Build The Web Adapter
 
 Building requires Go 1.22 or newer (CI uses Go 1.24). The web adapter and shared core
-use only the standard library and local Go packages; the HTML/CSS/JavaScript
+use the standard library, local Go packages, and `golang.org/x/sys` for platform
+support; the HTML/CSS/JavaScript
 UI is embedded. No npm, Node.js, frontend build step, or GTK development
 headers are needed for the default web build and tests. The web build and
 plain `go test ./...` need no C compiler; `make test` enables Go's race
@@ -547,10 +548,11 @@ tools installed. No CI job burns physical media.
 
 Use `make web`, `make gtk`, `make test`, `make test-gtk`, and `make smoke-gtk`
 for local development; `make package` builds the release layout on the target
-OS with its GTK development dependencies. Linux has been compiled locally;
-Windows and Darwin web cross-compilation is not verification of their native
-GTK packages. Hosted results remain pending until visible in Actions; consult
-the badge and run logs rather than assuming all three builds pass.
+OS with its GTK development dependencies. The first hosted run successfully
+built and packaged both interfaces on all three operating systems. Linux GTK
+widget checks run under Xvfb; Windows/macOS packaging verifies executable launch
+with `-h`, not graphical interaction or hardware playback. Consult the badge
+and run logs for the latest build status.
 
 For contributions, branch from `main`, make a focused change, run the relevant
 checks, and open a pull request against `main`. Include reproduction steps for

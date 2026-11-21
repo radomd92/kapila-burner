@@ -316,7 +316,19 @@ func discoverTools(app string) []Tool {
 			}
 			local := filepath.Join(app, "tools", "bin", localName)
 			if _, err := os.Stat(local); err == nil {
-				path = local
+				if runtime.GOOS == "windows" {
+					path = local
+				} else {
+					// Tracked Linux launchers require an ignored payload. Custom
+					// local binaries can be selected with DVDA_AUTHOR or MKISOFS.
+					payload := filepath.Join(app, "tools", "opt", "dvda-author", "dvda")
+					if name == "mkisofs" {
+						payload = filepath.Join(app, "tools", "opt", "dvda-author", "bin", "mkisofs")
+					}
+					if info, err := os.Stat(payload); err == nil && info.Mode().IsRegular() {
+						path = local
+					}
+				}
 			}
 		}
 		if path == "" {
