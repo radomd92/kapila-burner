@@ -1,0 +1,25 @@
+#!/bin/sh
+root=$(CDPATH= cd -- "$(dirname -- "$0")/../opt/dvda-author" && pwd) || exit 1
+# Upstream realpath() requires output and scratch directories to exist already.
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/dvda-author.XXXXXXXX") || exit 1
+trap 'rm -rf -- "$scratch"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+mkdir -p -- "$scratch/audio" "$scratch/lplex" "$scratch/lplex-output" || exit 1
+path_option=
+for arg do
+    if [ -n "$path_option" ]; then
+        mkdir -p -- "$arg" || exit 1
+        path_option=
+        continue
+    fi
+    case "$arg" in
+        -o|--output|-D|--tempdir|--lplex-tempdir|--lplex-output) path_option=1 ;;
+        --output=*|--tempdir=*|--lplex-tempdir=*|--lplex-output=*)
+            mkdir -p -- "${arg#*=}" || exit 1 ;;
+    esac
+done
+"$root/dvda" -W --bindir "$root/bin" --datadir "$root" \
+    --workdir "$PWD" -D "$scratch/audio" \
+    --lplex-tempdir "$scratch/lplex" --lplex-output "$scratch/lplex-output" "$@"
+exit $?

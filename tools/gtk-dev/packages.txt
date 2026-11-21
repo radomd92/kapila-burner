@@ -1,0 +1,9 @@
+libxtst-dev=2:1.2.3-1.1ubuntu0.1
+libatspi2.0-dev=2.52.0-1build1
+libatk-bridge2.0-dev=2.52.0-1build1
+libglvnd-core-dev=1.7.0-1build1
+libglvnd-dev=1.7.0-1build1
+libegl1-mesa-dev=25.2.8-0ubuntu0.24.04.5
+libepoxy-dev=1.5.10-1build1
+wayland-protocols=1.45-1~ubuntu0.24.04.2
+libgtk-3-dev=3.24.41-4ubuntu1.3

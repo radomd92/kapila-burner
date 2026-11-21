@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="plt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>DVD Audio Studio</title>
+  <style>
+    :root{--bg:#121412;--panel:#1b1e1b;--raised:#232722;--line:#353a32;--ink:#f0eddf;--muted:#a3aa9a;--amber:#efb65e;--green:#b4cd92;--red:#f29a86;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button,a,input,select{touch-action:manipulation}button{cursor:pointer}button,input,select{border:1px solid var(--line);border-radius:6px;background:var(--raised);color:var(--ink);padding:9px 12px}input,select{min-width:0;width:100%}input[type=checkbox]{width:17px;height:17px;accent-color:var(--amber);flex-shrink:0}button:hover:not(:disabled){border-color:var(--amber);background:#303126}button:disabled{opacity:.4;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px}button.primary{background:var(--amber);border-color:var(--amber);color:#211a0f;font-weight:750}button.primary:hover:not(:disabled){background:#ffd08a}button.small{padding:5px 9px;font-size:12px}button.quiet{background:transparent}a{color:var(--amber)}h1,h2,h3,p{margin:0}fieldset{border:0;padding:0;margin:0;min-width:0}label{display:block}small,.muted{color:var(--muted)}[hidden]{display:none!important}
+    .shell{max-width:1536px;margin:auto;padding:0 36px 28px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:25px 0;border-bottom:1px solid var(--line)}.brand{display:flex;gap:12px;align-items:center;font-weight:750;letter-spacing:-.3px;font-size:19px}.brandmark{height:35px;width:35px;border:1px solid var(--amber);border-radius:50%;display:grid;place-items:center;color:var(--amber);box-shadow:inset 0 0 0 7px var(--bg),inset 0 0 0 8px #685333}.brandmark:after{content:"";height:5px;width:5px;border:1px solid var(--amber);border-radius:50%}.eyebrow{font:11px var(--mono);letter-spacing:1.8px;text-transform:uppercase;color:var(--amber)}.local{display:flex;gap:9px;align-items:center;font:11px var(--mono);color:var(--muted);letter-spacing:1px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0}.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:34px 0 27px}h1{font-size:clamp(29px,3.3vw,44px);font-weight:550;line-height:1.15;letter-spacing:-1.6px;margin:9px 0 10px}.intro p{color:var(--muted);max-width:620px}.actions{display:flex;gap:8px;flex-wrap:wrap}.workspace{display:grid;grid-template-columns:minmax(260px,.94fr) minmax(340px,1.26fr) minmax(260px,.85fr);gap:18px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 19px;border-bottom:1px solid var(--line)}h2{font-size:15px;font-weight:650;letter-spacing:-.2px}.step{font:11px var(--mono);color:var(--amber);margin-right:9px}.count{font:11px var(--mono);color:var(--muted)}.pad{padding:18px 19px}.search{background:var(--bg);margin-bottom:12px}.library-meta{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-bottom:12px}.library-list{height:454px;overflow:auto;border-block:1px solid var(--line);scrollbar-color:var(--line) transparent}.file-row{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid #2b3029;cursor:pointer}.file-row:last-child{border-bottom:0}.file-row:has(input:checked){background:#efb65e0a}.file-row input{margin-top:4px}.file-info{min-width:0;flex:1}.file-name{display:block;font-size:13px;overflow-wrap:anywhere;line-height:1.45}.file-detail{display:block;font:10px/1.6 var(--mono);color:var(--muted);margin-top:4px;overflow-wrap:anywhere}.file-error{color:var(--red)}.library-bottom{padding-top:15px}.library-bottom button{width:100%}.selection{font-size:11px;color:var(--muted);margin:8px 0 0;text-align:center}.notice{padding:22px 8px;color:var(--muted);font-size:13px}.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin 1s linear infinite;margin-right:7px}@keyframes spin{to{transform:rotate(360deg)}}.field-label{font-size:11px;color:var(--muted);display:block;margin-bottom:6px}.group-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 15px}.group-tab{font:11px var(--mono);padding:7px 10px}.group-tab[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:#efb65e0c}.group-name{display:flex;gap:8px;margin-bottom:12px}.group-name input{background:var(--bg)}.group-summary{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--muted);margin-bottom:10px}.track-list{list-style:none;padding:0;margin:0;min-height:274px;max-height:450px;overflow:auto;scrollbar-color:var(--line) transparent}.track{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.track-number{font:11px var(--mono);color:var(--amber);width:20px;flex-shrink:0}.track-info{flex:1;min-width:0}.track-title{font-size:12px;overflow-wrap:anywhere}.track-actions{display:flex;gap:3px}.track-actions button{padding:4px 6px;min-width:26px;font-size:12px}.empty{border:1px dashed var(--line);border-radius:6px;min-height:245px;display:flex;align-items:center;justify-content:center;text-align:center;padding:25px;color:var(--muted)}.empty-disc{height:56px;width:56px;border:1px solid #666147;box-shadow:inset 0 0 0 13px var(--panel),inset 0 0 0 14px #666147;border-radius:50%;margin:0 auto 16px}.empty strong{display:block;font-size:14px;font-weight:500;color:var(--ink);margin-bottom:6px}.group-footer{padding-top:15px;margin-top:15px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.side{display:grid;gap:18px}.settings{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}.full{grid-column:1/-1}.check{display:flex;gap:9px;align-items:center;font-size:12px}.check input{margin:0}.format-note{font:10px/1.6 var(--mono);color:var(--muted);margin-top:13px}.capacity-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.capacity-top strong{font-size:20px;font-weight:500;letter-spacing:-.6px}.capacity-top span{font:11px var(--mono);color:var(--muted)}.meter{height:7px;background:#32372e;border-radius:4px;overflow:hidden;margin-bottom:10px}.meter-fill{height:100%;width:0;background:var(--amber);transition:width .3s}.estimate-state{font-size:11px;color:var(--muted);min-height:17px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:19px 0}.stats dt{font-size:10px;color:var(--muted);margin-bottom:3px}.stats dd{margin:0;font:12px var(--mono)}.build{width:100%;padding:12px}.error{font-size:12px;color:var(--red);overflow-wrap:anywhere}.feedback{margin:0 0 16px;padding:12px 15px;border:1px solid var(--line);border-radius:6px;color:var(--amber);background:var(--panel)}.footnote{font-size:11px;color:var(--muted);line-height:1.7}.info-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;padding:24px 0;color:var(--muted);font-size:12px}.info-bar strong{display:block;color:var(--ink);font-size:12px;margin-bottom:5px;font-weight:550}.system{display:grid;grid-template-columns:1fr 1.65fr;gap:18px}.tool-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.tool{padding:6px 9px;border:1px solid var(--line);border-radius:4px;font:11px var(--mono);display:flex;align-items:center;gap:7px}.tool.bad .dot{background:var(--red)}.tool.bad{color:var(--red)}.tool-details{font-size:11px;color:var(--muted);margin-top:12px;overflow-wrap:anywhere}.job-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.job-state{font:11px var(--mono);color:var(--amber);text-transform:uppercase;letter-spacing:1px}.log{margin:0;background:#10120f;border:1px solid var(--line);border-radius:5px;padding:13px;color:#c1c8b4;font:11px/1.7 var(--mono);height:150px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.job-output{font:11px var(--mono);color:var(--muted);overflow-wrap:anywhere;margin-top:10px}.download{display:inline-block;margin-top:12px;font-size:13px}.footer{border-top:1px solid var(--line);margin-top:23px;padding-top:17px;display:flex;justify-content:space-between;gap:16px;color:var(--muted);font:10px var(--mono);letter-spacing:.5px}
+    @media(min-width:1200px){.workspace>.panel{min-height:660px}}@media(max-width:1100px){.shell{padding-inline:22px}.workspace{grid-template-columns:1fr 1.25fr}.side{grid-column:1/-1;grid-template-columns:1fr 1fr}.library-list{height:420px}.system{grid-template-columns:1fr 1.4fr}}@media(max-width:680px){.shell{padding-inline:14px}.topbar{padding:19px 0}.local{font-size:9px;letter-spacing:0}.brand{font-size:16px}.intro{align-items:flex-start;flex-direction:column;padding:26px 0 22px;gap:18px}h1{letter-spacing:-1px}.workspace,.side,.system,.info-bar{grid-template-columns:1fr}.side{grid-column:auto}.library-list{height:310px}.track-list{max-height:380px;min-height:200px}.info-bar{gap:16px}.footer{flex-direction:column;gap:6px}.panel-head,.pad{padding:16px}.track-actions button{min-height:32px;min-width:28px}}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+    .topbar{flex-wrap:wrap}.header-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.language{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.language select{width:auto;max-width:100%;padding:6px 8px}@media(max-width:680px){.header-controls{width:100%;justify-content:space-between;gap:10px}.language{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar"><div class="brand"><span class="brandmark" aria-hidden="true"></span>DVD Audio Studio</div><div class="header-controls"><div class="local"><span class="dot"></span>TOERAM-PIASANA ETO AN-TOERANA</div><label class="language"><span data-i18n="Fiteny">Fiteny</span><select id="language" aria-label="Fitenin'ny rindranasa"><option value="plt" lang="plt">Malagasy (Plateau)</option><option value="en" lang="en">English</option><option value="fr" lang="fr">Français</option></select></label></div></header>
+    <section class="intro"><div><div class="eyebrow">Efitra fihainoana / Famoronana kapila</div><h1>Ny tahirinao. Ao anaty kapila.</h1><p>Alaharo ho tetikasa DVD-Audio na Video CD ny feo sy video. Eto amin'ity solosaina ity ihany no anaovana ny fanodinana rehetra.</p></div><div class="actions"><button id="import" class="quiet">Ampidiro ny tetikasa</button><button id="export" class="quiet">Avoahy ho JSON</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></section>
+    <p id="feedback" class="feedback" role="status" hidden></p>
+    <main class="workspace">
+      <section class="panel" aria-labelledby="library-title">
+        <div class="panel-head"><h2 id="library-title"><span class="step">01</span>Tahirin'ny rakitra loharano</h2><button id="reload" class="small quiet">Karohy indray</button></div>
+        <fieldset id="library-controls" class="pad"><legend class="field-label" hidden>Fidio ny raki-peo loharano</legend><input id="search" class="search" type="search" placeholder="Sivano ny raki-peo na lahatahiry..." aria-label="Sivano ny tahirin'ny rakitra loharano"><div class="library-meta"><span id="library-count">Mamaky ny tahirinao</span><button id="select-visible" class="small quiet">Fidio izay hita</button></div><div id="library" class="library-list" aria-busy="true"><p class="notice"><span class="spinner"></span>Mikaroka rakitra feo. Mety haharitra ny fikarohana voalohany.</p></div><p id="library-error" class="error" role="alert" hidden></p><div class="library-bottom"><button id="add-tracks" class="primary" disabled>Ampio ny raki-peo voafidy</button><p id="selection" class="selection">Fidio ny raki-peo hampiana ao amin'ny Vondrona 1</p></div></fieldset>
+      </section>
+      <section class="panel" aria-labelledby="sequence-title">
+        <div class="panel-head"><h2 id="sequence-title"><span class="step">02</span>Filaharan'ny kapila</h2><span id="total-tracks" class="count">0 RAKI-PEO</span></div>
+        <fieldset id="sequence-controls" class="pad"><label><span class="field-label">Anaran'ny tetikasa</span><input id="project-name" maxlength="120" placeholder="Tetikasa tsy misy anarana"></label><div id="groups" class="group-tabs" aria-label="Vondron'ny raki-peo"></div><div class="group-name"><input id="group-name" aria-label="Anaran'ny vondrona voafidy" maxlength="120"><button id="remove-group" class="small quiet" title="Esory ny vondrona voafidy">Esory ny vondrona</button></div><div class="group-summary"><span id="group-count">0 / 99 RAKI-PEO</span><span id="group-duration">00:00</span></div><ol id="tracks" class="track-list"></ol><div class="group-footer"><span>Vondrona 9 raha be indrindra / raki-peo 99 isaky ny vondrona</span><span>Voatazona ny filaharana</span></div></fieldset>
+      </section>
+      <aside class="side">
+        <section class="panel pad"><fieldset id="project-type-controls"><div class="settings"><label><span class="field-label" data-i18n="Karazana tetikasa">Project type</span><select id="project-format"><option value="dvd-audio">DVD Audio</option><option value="vcd">Video CD</option></select></label><label id="video-standard-label"><span class="field-label" data-i18n="Fenitry ny video">Video standard</span><select id="video-standard"><option value="pal">PAL</option><option value="ntsc">NTSC</option></select></label></div></fieldset><p id="vcd-note" class="format-note" hidden data-i18n="VCD tena izy: video MPEG-1 sy feo MP2, manodidina ny 74/80 minitra amin'ny CD-R/RW. Video mainty ho an'ny loharano feo ihany. Tsy Audio CD na DVD. BIN/CUE no vokatra, fa tsy ISO. Mila alaina miaraka ireo rakitra roa ary tehirizina ao anaty lahatahiry iray. Doroy amin'ny K3b na cdrdao ny sarin-kapila nalaina; raha hampiasa ny fandoroana anatiny, sokafy ny tetikasa ary forony ao amin'ny GTK ny sarin-kapila.">True VCD: MPEG-1 video and MP2 audio, about 74/80 minutes on CD-R/RW. Audio-only sources use black video. Not an Audio CD or DVD. Output is BIN/CUE, not ISO. Download both files into the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.</p></section>
+        <section class="panel" aria-labelledby="format-title"><div class="panel-head"><h2 id="format-title"><span class="step">03</span>Endriky ny vokatra</h2><span class="count">LPCM</span></div><fieldset id="format-controls" class="pad"><div class="settings"><label><span class="field-label">Tahan'ny fakana santionany</span><select id="sample-rate"><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option><option value="96000">96 kHz</option><option value="192000">192 kHz</option></select></label><label><span class="field-label">Isan'ny bit isaky ny santionany</span><select id="bits"><option value="16">16 bit</option><option value="24">24 bit</option></select></label><label><span class="field-label">Fantsona feo</span><select id="channels"><option value="2">Stereo</option><option value="1">Mono</option></select></label><label><span class="field-label">Fahafahan'ny kapila</span><select id="capacity"><option value="dvd5">DVD-5 / 4.7 GB</option><option value="dvd9">DVD-9 / 8.5 GB</option></select></label><label class="check full"><input id="iso" type="checkbox" checked>Mamorona rakitra ISO azo alaina</label></div><p class="format-note">PCM tsipika tsy voaporitra.<br>Tsy misy famatrarana MLP. Tsy misy safidy an-tsary.</p></fieldset></section>
+        <section class="panel" aria-labelledby="estimate-title"><div class="panel-head"><h2 id="estimate-title">Tomban'ny habaka amin'ny kapila</h2><span id="media-label" class="count">DVD-5</span></div><div class="pad"><div class="capacity-top"><strong id="estimated-size">--</strong><span id="capacity-size">amin'ny 4.7 GB</span></div><div id="meter" class="meter" role="meter" aria-label="Tomban'ny habaka ampiasaina amin'ny kapila" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="meter-fill" class="meter-fill"></div></div><p id="estimate-state" class="estimate-state" aria-live="polite">Ampio raki-peo hanombanana ny kapila.</p><p id="estimate-error" class="error" role="alert" hidden></p><dl class="stats"><div><dt>FAHARETAN'NY FEON-KIRA</dt><dd id="duration">--</dd></div><div><dt>FEO PCM</dt><dd id="pcm">--</dd></div><div><dt>HABAKA ILAINA HIASANA</dt><dd id="workspace">--</dd></div><div><dt>FITAMBARAN'NY RAKI-PEO</dt><dd id="track-stat">0</dd></div></dl><button id="build" class="primary build" disabled>Forony ny DVD-Audio</button><p id="build-hint" class="selection">Ampio raki-peo hanombohana ny asa.</p></div></section>
+      </aside>
+    </main>
+    <section class="info-bar" aria-label="Momba ny DVD-Audio"><p><strong>Rakitra kely, feo feno habe.</strong>Mivelatra ho PCM ny MP3 sy ny loharano hafa voaporitra. Ny feo voavaha no iorenan'ny habaka ampiasaina amin'ny kapila, fa tsy ny haben'ny rakitra loharano.</p><p><strong>Hevero ny kalitaon'ny loharano.</strong>Tsy mamerina ny kalitao very tamin'ny famatrarana ny fampiakarana ny tahan'ny fakana santionany na ny isan'ny bit. Atombohy amin'ny loharano tsara indrindra anananao.</p><p><strong>Natao ho an'ny mpamaky DVD-Audio.</strong>Tsy kapila DVD-Video ity. Mila mpamaky mifanaraka amin'ny DVD-Audio ny fihainoana azy. Tsy misy safidy na fanovam-pango MLP.</p></section>
+    <section class="system">
+      <div class="panel pad"><h2>Fitaovana ilain'ny rindranasa</h2><div id="tools" class="tool-list"><span class="muted">Manamarina ny fitaovana eto an-toerana...</span></div><p id="status-error" class="error" role="alert" hidden></p><details class="tool-details"><summary>Antsipirian'ny fitaovana &amp; lahatahiry fototry ny tahiry</summary><div id="tool-details"></div><p id="library-root">Eo am-pikarohana ny tahiry.</p></details></div>
+      <div class="panel pad"><div class="job-head"><h2>Diarin'ny asa</h2><div class="actions"><span id="job-state" class="job-state">Miandry</span><button id="cancel" class="small" hidden>Ajanony ny asa</button></div></div><pre id="log" class="log" tabindex="0" aria-label="Diarin'ny famoronana">Vonona rehefa vonona ianao. Hiseho eto ny tatitra momba ny famoronana.</pre><p id="job-error" class="error" role="alert" hidden></p><p id="job-output" class="job-output" hidden></p><a id="download" class="download" hidden>Alaivo ny rakitra ISO</a></div>
+    </section>
+    <p id="vcd-downloads" hidden><a id="download-cue" class="download" data-i18n="Alaivo ny CUE">Download CUE</a> <a id="download-bin" class="download" data-i18n="Alaivo ny BIN">Download BIN</a><br><span data-i18n="Ilaina miaraka ny disc.cue sy disc.bin. Tehirizo ireo anarana ireo ao anaty lahatahiry iray. Doroy amin'ny K3b na cdrdao ny sarin-kapila nalaina; raha hampiasa ny fandoroana anatiny, sokafy ny tetikasa ary forony ao amin'ny GTK ny sarin-kapila.">Both disc.cue and disc.bin are required. Keep these names in the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.</span></p>
+    <p class="selection" data-i18n="Mitazona ny fiteny nanombohany ny diarin'ny asa mandeha.">Logs for the current run keep the language used when it started.</p>
+    <footer class="footer"><span>DVD Audio Studio / FAMORONANA ETO AN-TOERANA ALOHA</span><span id="save-state">Voatahiry ho azy ato amin'ity mpitety tranonkala ity ny tetikasa</span></footer>
+  </div>
+  <script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const STORAGE_KEY = 'dvd-audio-studio.project.v1';
+    const LANGUAGE_KEY = 'dvd-audio-studio.language.v1';
+    let language = 'plt', languageVersion = 0;
+    try { const saved = localStorage.getItem(LANGUAGE_KEY); if (['plt','en','fr'].includes(saved)) language = saved; } catch {}
+    // Malagasy source strings are catalog keys; {n} placeholders never contain markup.
+    const catalog = new Map([
+      ['Karazana tetikasa','Project type'],['Fenitry ny video','Video standard'],
+      ["VCD tena izy: video MPEG-1 sy feo MP2, manodidina ny 74/80 minitra amin'ny CD-R/RW. Video mainty ho an'ny loharano feo ihany. Tsy Audio CD na DVD. BIN/CUE no vokatra, fa tsy ISO. Mila alaina miaraka ireo rakitra roa ary tehirizina ao anaty lahatahiry iray. Doroy amin'ny K3b na cdrdao ny sarin-kapila nalaina; raha hampiasa ny fandoroana anatiny, sokafy ny tetikasa ary forony ao amin'ny GTK ny sarin-kapila.",'True VCD: MPEG-1 video and MP2 audio, about 74/80 minutes on CD-R/RW. Audio-only sources use black video. Not an Audio CD or DVD. Output is BIN/CUE, not ISO. Download both files into the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.'],
+      ['Alaivo ny CUE','Download CUE'],['Alaivo ny BIN','Download BIN'],
+      ["Ilaina miaraka ny disc.cue sy disc.bin. Tehirizo ireo anarana ireo ao anaty lahatahiry iray. Doroy amin'ny K3b na cdrdao ny sarin-kapila nalaina; raha hampiasa ny fandoroana anatiny, sokafy ny tetikasa ary forony ao amin'ny GTK ny sarin-kapila.",'Both disc.cue and disc.bin are required. Keep these names in the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.'],
+      ['Tsy mety ny karazana tetikasa na fenitry ny video.','Invalid project type or video standard.'],
+      ['VCD: vondrona iray, raki-peo 98 raha be indrindra.','VCD: one group, up to 98 tracks.'],
+      ['Tsy azo avadika ho VCD: mihoatra ny 98 ny raki-peo. Voatazona ny tetikasa.','Cannot switch to VCD: more than 98 tracks. Your project is preserved.'],
+      ["Atambatra ho vondrona iray ve ireo vondrona? Voatazona ny raki-peo rehetra sy ny filaharany, fa ny anaran'ny vondrona voalohany ihany no tazonina.",'Merge the groups into one? All tracks and their order are preserved, but only the first group name is kept.'],
+      ['Forony ny Video CD','Build Video CD'],['Tsy mihatra','Not applicable'],
+      ['Mihoatra ny fetra raki-peo {0} ny voafidy.','The selection exceeds the {0}-track limit.'],
+      ['{0} / {1} RAKI-PEO','{0} / {1} TRACKS'],
+      ['Mamorona Video CD ho BIN/CUE.','Build Video CD as BIN/CUE.'],
+      ['Fiteny','Language'],
+      ["Fitenin'ny rindranasa",'Interface language'],
+      ["Mitazona ny fiteny nanombohany ny diarin'ny asa mandeha.",'Logs for the current run keep the language used when it started.'],
+      ['TOERAM-PIASANA ETO AN-TOERANA','LOCAL WORKSPACE'],
+      ['Efitra fihainoana / Famoronana kapila','Listening room / Disc authoring'],
+      ['Ny tahirinao. Ao anaty kapila.','Your collection. On disc.'],
+      ["Alaharo ho tetikasa DVD-Audio na Video CD ny feo sy video. Eto amin'ity solosaina ity ihany no anaovana ny fanodinana rehetra.",'Arrange audio and video into DVD-Audio or Video CD projects. All processing stays on this computer.'],
+      ['Ampidiro ny tetikasa','Import project'],['Avoahy ho JSON','Export JSON'],
+      ["Tahirin'ny rakitra loharano",'Source library'],['Karohy indray','Rescan'],
+      ['Fidio ny raki-peo loharano','Choose source recordings'],['Sivano ny raki-peo na lahatahiry...','Filter recordings or folders...'],
+      ["Sivano ny tahirin'ny rakitra loharano",'Filter the source library'],['Mamaky ny tahirinao','Reading your library'],['Fidio izay hita','Select visible'],
+      ['Mikaroka rakitra feo. Mety haharitra ny fikarohana voalohany.','Scanning audio files. The first scan may take a while.'],
+      ["Mikaroka rakitra feo. Mety haharitra ny fikarohana voalohany amin'ny ffprobe.",'Scanning audio files. The first ffprobe scan may take a while.'],
+      ['Ampio ny raki-peo voafidy','Add selected recordings'],["Fidio ny raki-peo hampiana ao amin'ny Vondrona 1",'Choose recordings to add to Group 1'],
+      ["Filaharan'ny kapila",'Disc sequence'],['0 RAKI-PEO','0 TRACKS'],["Anaran'ny tetikasa",'Project name'],['Tetikasa tsy misy anarana','Untitled project'],
+      ["Vondron'ny raki-peo",'Track groups'],["Anaran'ny vondrona voafidy",'Selected group name'],['Esory ny vondrona voafidy','Remove selected group'],['Esory ny vondrona','Remove group'],
+      ['0 / 99 RAKI-PEO','0 / 99 TRACKS'],['Vondrona 9 raha be indrindra / raki-peo 99 isaky ny vondrona','Up to 9 groups / 99 tracks per group'],['Voatazona ny filaharana','Order is preserved'],
+      ['Endriky ny vokatra','Output format'],["Tahan'ny fakana santionany",'Sample rate'],["Isan'ny bit isaky ny santionany",'Bit depth'],['Fantsona feo','Audio channels'],["Fahafahan'ny kapila",'Disc capacity'],
+      ['Mamorona rakitra ISO azo alaina','Create a downloadable ISO'],['PCM tsipika tsy voaporitra.','Uncompressed linear PCM.'],['Tsy misy famatrarana MLP. Tsy misy safidy an-tsary.','No MLP compression. No visual menus.'],
+      ["Tomban'ny habaka amin'ny kapila",'Estimated disc usage'],['amin\'ny 4.7 GB','of 4.7 GB'],["Tomban'ny habaka ampiasaina amin'ny kapila",'Estimated disc space used'],
+      ['Ampio raki-peo hanombanana ny kapila.','Add recordings to estimate the disc.'],["FAHARETAN'NY FEON-KIRA",'AUDIO DURATION'],['FEO PCM','PCM AUDIO'],['HABAKA ILAINA HIASANA','WORKSPACE REQUIRED'],["FITAMBARAN'NY RAKI-PEO",'TOTAL TRACKS'],
+      ['Forony ny DVD-Audio','Build DVD-Audio'],['Ampio raki-peo hanombohana ny asa.','Add recordings to get started.'],['Momba ny DVD-Audio','About DVD-Audio'],
+      ['Rakitra kely, feo feno habe.','Small files, full-size audio.'],
+      ["Mivelatra ho PCM ny MP3 sy ny loharano hafa voaporitra. Ny feo voavaha no iorenan'ny habaka ampiasaina amin'ny kapila, fa tsy ny haben'ny rakitra loharano.",'MP3 and other compressed sources expand to PCM. Disc usage is based on decoded audio, not the size of the source file.'],
+      ["Hevero ny kalitaon'ny loharano.",'Consider source quality.'],
+      ["Tsy mamerina ny kalitao very tamin'ny famatrarana ny fampiakarana ny tahan'ny fakana santionany na ny isan'ny bit. Atombohy amin'ny loharano tsara indrindra anananao.",'Increasing the sample rate or bit depth cannot recover quality lost to compression. Start with your best available sources.'],
+      ["Natao ho an'ny mpamaky DVD-Audio.",'Made for DVD-Audio players.'],
+      ["Tsy kapila DVD-Video ity. Mila mpamaky mifanaraka amin'ny DVD-Audio ny fihainoana azy. Tsy misy safidy na fanovam-pango MLP.",'This is not a DVD-Video disc. Playback requires a DVD-Audio-compatible player. No menus or MLP encoding.'],
+      ["Fitaovana ilain'ny rindranasa",'Required tools'],['Manamarina ny fitaovana eto an-toerana...','Checking local tools...'],
+      ["Antsipirian'ny fitaovana & lahatahiry fototry ny tahiry",'Tool details & library root'],['Eo am-pikarohana ny tahiry.','Locating the library.'],
+      ["Diarin'ny asa",'Job log'],['Miandry','Idle'],['Ajanony ny asa','Cancel job'],["Diarin'ny famoronana",'Build log'],
+      ['Vonona rehefa vonona ianao. Hiseho eto ny tatitra momba ny famoronana.','Ready when you are. Build logs will appear here.'],['Alaivo ny rakitra ISO','Download ISO'],
+      ['DVD Audio Studio / FAMORONANA ETO AN-TOERANA ALOHA','DVD Audio Studio / LOCAL-FIRST AUTHORING'],
+      ["Voatahiry ho azy ato amin'ity mpitety tranonkala ity ny tetikasa",'Project autosaved in this browser'],
+      ["Tsy azo ampiasaina ny fitahirizan'ny mpitety tranonkala. Avoahy ho JSON ny tetikasanao mba hitahirizana azy.",'Browser storage is unavailable. Export your project as JSON to save it.'],
+      ['Tsy maintsy manana anarana tsy banga ny tetikasa.','The project must have a non-empty name.'],
+      ["Tsy tohanana io endrika feo io. Fidio ny tahan'ny fakana santionany voatanisa, 16/24 bit, ary mono/stereo.",'Unsupported audio format. Choose a listed sample rate, 16/24 bit, and mono/stereo.'],
+      ["Tsy mety ny fahafahan'ny kapila na ny fikirana ISO.",'Invalid disc capacity or ISO setting.'],
+      ["Tsy maintsy misy vondrona 1 hatramin'ny 9 ny tetikasa.",'The project must contain 1 to 9 groups.'],
+      ["Mila anarana sy lalan-drakitra loharano mifandray amin'ny lahatahiry fototra, tsy mihoatra ny 99, ny vondrona tsirairay.",'Each group needs a name and up to 99 source paths relative to the library root.'],
+      ['Namerina valiny JSON tsy mety ny lohamilina.','The server returned invalid JSON.'],['Tsy nahomby ny fangatahana (HTTP {0}).','Request failed (HTTP {0}).'],
+      ['{0}, vondrona {1}','{0}, group {1}'],['+ Vondrona','+ Group'],['Vondrona {0}','Group {0}'],['{0} / 99 RAKI-PEO','{0} / 99 TRACKS'],['{0} RAKI-PEO','{0} TRACKS'],
+      ["Raki-peo iray no iandohan'ny kapila tsara rehetra.",'Every great disc starts with one recording.'],["Fidio ny raki-peo ao amin'ny tahirinao, dia ampio eto.",'Choose recordings from your library and add them here.'],
+      ["Tsy hita ao amin'ny tahiry ny loharano",'Source not found in the library'],['Miandry ny fikarohana ny tahiry','Waiting for the library scan'],
+      ['Afindrao miakatra ny raki-peo','Move recording up'],['Afindrao midina ny raki-peo','Move recording down'],['Esory ny raki-peo','Remove recording'],
+      ["{0} amin'ny loharano {1}",'{0} of {1} sources'],["Tsy misy raki-peo mifanaraka amin'ny sivanao.",'No recordings match your filter.'],["Tsy misy rakitra feo hita ao amin'ny lahatahiry fototry ny tahiry.",'No audio files found in the library root.'],
+      ['Fidio {0}','Select {0}'],['{0} fantsona','{0} channels'],["Ampio raki-peo {0} ao amin'ny vondrona {1}",'Add to group {1}: {0} selected'],
+      ["Mihoatra ny fetra raki-peo 99 ho an'ity vondrona ity ny voafidy.",'The selection exceeds this group\'s 99-track limit.'],['{0} voafidy / azo averina ny raki-peo','{0} selected / repeats allowed'],
+      ['Eo am-pijanonana...','Cancelling...'],['Mandefa ny asa...','Submitting job...'],['Misy asa mandeha. Tsy azo ovaina ny tetikasa.','A job is running. Project editing is locked.'],
+      ["Miandry fifandraisana amin'ny rindranasa.",'Waiting for a connection to the application.'],["Miandry ny fahavitan'ny fikarohana ny tahiry.",'Waiting for the library scan to finish.'],
+      ['Omeo anarana ny tetikasa sy ny vondrona tsirairay.','Name the project and every group.'],['Esory ny loharano tsy hita na tsy azo vakina alohan\'ny famoronana.','Remove missing or unreadable sources before building.'],
+      ["Manombana ny habaka amin'ny kapila...",'Estimating disc usage...'],['Mila tombana manan-kery alohan\'ny famoronana.','A valid estimate is required before building.'],["Mihoatra ny fahafahan'ny kapila voafidy ity asa ity.",'This job exceeds the selected disc capacity.'],
+      ['Mandefa...','Submitting...'],['Mandeha ny asa','Job running'],['Mamorona kapila ary fonosy ho rakitra ISO.','Build the disc and package it as an ISO.'],['Mamorona rakitra DVD-Audio tsy misy ISO.','Build DVD-Audio files without an ISO.'],
+      ["amin'ny {0}",'of {0}'],["Manisa ny habaka ampiasaina amin'ny kapila sy hiasana...",'Calculating disc and workspace usage...'],
+      ['{0}% ampiasaina / {1}','{0}% used / {1}'],["Tsy mihoatra ny fahafahan'ny kapila",'Within disc capacity'],['Mihoatra ny fahafahana','Over capacity'],['Miandry ny fikarohana ny loharano...','Waiting for the source scan...'],['Tsy misy tombana azo ampiasaina.','No estimate available.'],
+      ['Namerina tombana tsy mety ny lohamilina.','The server returned an invalid estimate.'],['Tsy azo natao ny fanombanana: {0}','Could not estimate: {0}'],["Mikaroka ao amin'ny tahiry",'Scanning the library'],['Namerina tahiry tsy mety ny lohamilina.','The server returned an invalid library.'],
+      ['Lahatahiry fototry ny tahiry: {0}','Library root: {0}'],['Tsy azo novakina ny tahiry: {0} Tsindrio ny Karohy indray hanandramana indray.','Could not read the library: {0} Click Rescan to retry.'],['Tsy azo ampiasaina ny tahiry. Voatazona ny filaharana voatahiry.','Library unavailable. Your saved sequence is preserved.'],['Tsy nahomby ny fikarohana','Scan failed'],
+      ['Mandeha','Running'],['Vita','Completed'],['Tsy nahomby','Failed'],['Nisy hadisoana','Error'],['Najanona','Cancelled'],['Milahatra','Queued'],['Manomboka','Starting'],['Eo am-pijanonana','Cancelling'],['Toetry ny asa: {0}','Job state: {0}'],
+      ['Miandry ny tatitra momba ny famoronana...','Waiting for build logs...'],['Vokatra: {0}','Output: {0}'],['vonona','ready'],['tsy hita','missing'],['Tsy nisy fampahalalana momba ny fitaovana ilaina voaray.','No tool information received.'],
+      ["Fifandraisana amin'ny rindranasa: {0} Hanandrana indray ho azy.",'Application connection: {0} Retrying automatically.'],
+      ['Esorina amin\'ity tetikasa ity ve ny "{0}" sy ny raki-peo {1} ao aminy? Tsy ho voafafa ny rakitra loharano.','Remove "{0}" and its {1} recordings from this project? Source files will not be deleted.'],
+      ["Tsy maintsy latsaky ny 5 MB ny rakitra JSON an'ny tetikasa.",'Project JSON must be smaller than 5 MB.'],['Nanomboka ny famoronana teo am-pamakiana ny tetikasa. Andramo ampidirina indray rehefa vita izany.','A build started while reading the project. Try importing again when it finishes.'],
+      ['Hosoloina "{0}" ve ny tetikasa ankehitriny?','Replace the current project with "{0}"?'],["Tafiditra ny tetikasa. Voatazona ny filaharan'ny raki-peo sy ireo miverimberina.",'Project imported. Track order and repeats are preserved.'],['Tsy tafiditra ny tetikasa: {0}','Could not import project: {0}'],
+      ['Tsy afaka nanomboka ny asa: {0}','Could not start job: {0}'],["Nalefa ny fangatahana fampijanonana. Miandry ny fijanonan'ny famoronana.",'Cancellation requested. Waiting for the build to stop.'],['Tsy afaka nampijanona ny asa: {0}','Could not cancel job: {0}'],
+      ['Tsy azo nosokafana ny tetikasa voatahiry: {0} Azonao ampidirina kosa ny tetikasa efa navoaka ho rakitra.','Could not open saved project: {0} You can import a previously exported project instead.']
+    ]);
+    const french = new Map([
+      ['Project type','Type de projet'],['Video standard','Norme vidéo'],
+      ['True VCD: MPEG-1 video and MP2 audio, about 74/80 minutes on CD-R/RW. Audio-only sources use black video. Not an Audio CD or DVD. Output is BIN/CUE, not ISO. Download both files into the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.',"Véritable VCD : vidéo MPEG-1 et audio MP2, environ 74/80 minutes sur CD-R/RW. Les sources audio seules utilisent une vidéo noire. Ce n'est ni un CD audio ni un DVD. La sortie est BIN/CUE, pas ISO. Téléchargez les deux fichiers dans le même dossier. Gravez les images téléchargées avec K3b ou cdrdao ; pour la gravure intégrée, ouvrez le projet et créez l'image dans GTK."],
+      ['Download CUE','Télécharger le CUE'],['Download BIN','Télécharger le BIN'],
+      ['Both disc.cue and disc.bin are required. Keep these names in the same directory. Burn downloaded images with K3b or cdrdao; for built-in burning, open the project and create the image in GTK.',"Les fichiers disc.cue et disc.bin sont tous deux requis. Gardez ces noms dans le même dossier. Gravez les images téléchargées avec K3b ou cdrdao ; pour la gravure intégrée, ouvrez le projet et créez l'image dans GTK."],
+      ['Invalid project type or video standard.','Type de projet ou norme vidéo invalide.'],['VCD: one group, up to 98 tracks.',"VCD : un groupe, jusqu'à 98 pistes."],
+      ['Cannot switch to VCD: more than 98 tracks. Your project is preserved.','Impossible de passer au VCD : plus de 98 pistes. Votre projet est conservé.'],
+      ['Merge the groups into one? All tracks and their order are preserved, but only the first group name is kept.',"Fusionner les groupes ? Toutes les pistes et leur ordre sont conservés, mais seul le nom du premier groupe est gardé."],
+      ['Build Video CD','Créer le Video CD'],['Not applicable','Sans objet'],['The selection exceeds the {0}-track limit.','La sélection dépasse la limite de {0} pistes.'],['{0} / {1} TRACKS','{0} / {1} PISTES'],['Build Video CD as BIN/CUE.','Créer le Video CD au format BIN/CUE.'],
+      ['Language','Langue'],['Interface language',"Langue de l'interface"],['Logs for the current run keep the language used when it started.','Les journaux de la tâche en cours gardent la langue utilisée à son démarrage.'],
+      ['LOCAL WORKSPACE','ESPACE DE TRAVAIL LOCAL'],['Listening room / Disc authoring',"Salon d'écoute / Création de disques"],['Your collection. On disc.','Votre collection. Sur disque.'],
+      ['Arrange audio and video into DVD-Audio or Video CD projects. All processing stays on this computer.','Organisez vos fichiers audio et vidéo en projets DVD-Audio ou Video CD. Tous les traitements restent sur cet ordinateur.'],
+      ['Import project','Importer un projet'],['Export JSON','Exporter en JSON'],['Source library','Bibliothèque source'],['Rescan','Analyser à nouveau'],['Choose source recordings','Choisir les enregistrements source'],['Filter recordings or folders...','Filtrer les enregistrements ou les dossiers...'],['Filter the source library','Filtrer la bibliothèque source'],['Reading your library','Lecture de votre bibliothèque'],['Select visible','Sélectionner les éléments visibles'],
+      ['Scanning audio files. The first scan may take a while.','Recherche des fichiers audio. La première analyse peut prendre du temps.'],['Scanning audio files. The first ffprobe scan may take a while.','Recherche des fichiers audio. La première analyse ffprobe peut prendre du temps.'],
+      ['Add selected recordings','Ajouter les enregistrements sélectionnés'],['Choose recordings to add to Group 1','Choisissez les enregistrements à ajouter au Groupe 1'],['Disc sequence','Ordre du disque'],['0 TRACKS','0 PISTES'],['Project name','Nom du projet'],['Untitled project','Projet sans titre'],['Track groups','Groupes de pistes'],['Selected group name','Nom du groupe sélectionné'],['Remove selected group','Supprimer le groupe sélectionné'],['Remove group','Supprimer le groupe'],['0 / 99 TRACKS','0 / 99 PISTES'],['Up to 9 groups / 99 tracks per group',"Jusqu'à 9 groupes / 99 pistes par groupe"],['Order is preserved',"L'ordre est conservé"],
+      ['Output format','Format de sortie'],['Sample rate',"Fréquence d'échantillonnage"],['Bit depth','Résolution en bits'],['Audio channels','Canaux audio'],['Disc capacity','Capacité du disque'],['Create a downloadable ISO','Créer un ISO téléchargeable'],['Uncompressed linear PCM.','PCM linéaire non compressé.'],['No MLP compression. No visual menus.','Pas de compression MLP. Pas de menus visuels.'],['Estimated disc usage','Occupation estimée du disque'],['of 4.7 GB','sur 4.7 GB'],['Estimated disc space used','Espace disque utilisé estimé'],['Add recordings to estimate the disc.','Ajoutez des enregistrements pour estimer le disque.'],['AUDIO DURATION','DURÉE AUDIO'],['PCM AUDIO','AUDIO PCM'],['WORKSPACE REQUIRED','ESPACE DE TRAVAIL REQUIS'],['TOTAL TRACKS','TOTAL DES PISTES'],['Build DVD-Audio','Créer le DVD-Audio'],['Add recordings to get started.','Ajoutez des enregistrements pour commencer.'],['About DVD-Audio','À propos du DVD-Audio'],
+      ['Small files, full-size audio.','Petits fichiers, son pleine taille.'],['MP3 and other compressed sources expand to PCM. Disc usage is based on decoded audio, not the size of the source file.',"Le MP3 et les autres sources compressées sont décompressés en PCM. L'occupation du disque dépend de l'audio décodé, pas de la taille du fichier source."],['Consider source quality.','Tenez compte de la qualité des sources.'],['Increasing the sample rate or bit depth cannot recover quality lost to compression. Start with your best available sources.',"Augmenter la fréquence d'échantillonnage ou la résolution ne restaure pas la qualité perdue lors de la compression. Utilisez vos meilleures sources disponibles."],['Made for DVD-Audio players.','Conçu pour les lecteurs DVD-Audio.'],['This is not a DVD-Video disc. Playback requires a DVD-Audio-compatible player. No menus or MLP encoding.',"Ce n'est pas un disque DVD-Video. La lecture exige un lecteur compatible DVD-Audio. Pas de menus ni d'encodage MLP."],
+      ['Required tools','Outils requis'],['Checking local tools...','Vérification des outils locaux...'],['Tool details & library root','Détails des outils et racine de la bibliothèque'],['Locating the library.','Recherche de la bibliothèque.'],['Job log','Journal des tâches'],['Idle','En attente'],['Cancel job','Annuler la tâche'],['Build log','Journal de création'],['Ready when you are. Build logs will appear here.','Prêt quand vous le souhaitez. Les journaux de création apparaîtront ici.'],['Download ISO',"Télécharger l'ISO"],['DVD Audio Studio / LOCAL-FIRST AUTHORING','DVD Audio Studio / CRÉATION LOCALE'],['Project autosaved in this browser','Projet enregistré automatiquement dans ce navigateur'],
+      ['Browser storage is unavailable. Export your project as JSON to save it.',"Le stockage du navigateur est indisponible. Exportez votre projet en JSON pour l'enregistrer."],['The project must have a non-empty name.','Le projet doit avoir un nom non vide.'],['Unsupported audio format. Choose a listed sample rate, 16/24 bit, and mono/stereo.',"Format audio non pris en charge. Choisissez une fréquence d'échantillonnage proposée, 16/24 bits et mono/stéréo."],['Invalid disc capacity or ISO setting.','Capacité du disque ou paramètre ISO invalide.'],['The project must contain 1 to 9 groups.','Le projet doit contenir de 1 à 9 groupes.'],['Each group needs a name and up to 99 source paths relative to the library root.',"Chaque groupe doit avoir un nom et jusqu'à 99 chemins source relatifs à la racine de la bibliothèque."],['The server returned invalid JSON.','Le serveur a renvoyé un JSON invalide.'],['Request failed (HTTP {0}).','Échec de la requête (HTTP {0}).'],
+      ['{0}, group {1}','{0}, groupe {1}'],['+ Group','+ Groupe'],['Group {0}','Groupe {0}'],['{0} / 99 TRACKS','{0} / 99 PISTES'],['{0} TRACKS','{0} PISTES'],['Every great disc starts with one recording.','Tout bon disque commence par un enregistrement.'],['Choose recordings from your library and add them here.','Choisissez des enregistrements dans votre bibliothèque et ajoutez-les ici.'],['Source not found in the library','Source introuvable dans la bibliothèque'],['Waiting for the library scan',"En attente de l'analyse de la bibliothèque"],['Move recording up',"Monter l'enregistrement"],['Move recording down',"Descendre l'enregistrement"],['Remove recording',"Retirer l'enregistrement"],['{0} of {1} sources','{0} sur {1} sources'],['No recordings match your filter.','Aucun enregistrement ne correspond au filtre.'],['No audio files found in the library root.','Aucun fichier audio trouvé dans la racine de la bibliothèque.'],['Select {0}','Sélectionner {0}'],['{0} channels','{0} canaux'],['Add to group {1}: {0} selected','Ajouter au groupe {1} : {0} sélectionnés'],["The selection exceeds this group's 99-track limit.",'La sélection dépasse la limite de 99 pistes de ce groupe.'],['{0} selected / repeats allowed','{0} sélectionnés / répétitions autorisées'],
+      ['Cancelling...','Annulation...'],['Submitting job...','Envoi de la tâche...'],['A job is running. Project editing is locked.','Une tâche est en cours. La modification du projet est verrouillée.'],['Waiting for a connection to the application.',"En attente de connexion à l'application."],['Waiting for the library scan to finish.',"En attente de la fin de l'analyse de la bibliothèque."],['Name the project and every group.','Nommez le projet et chaque groupe.'],['Remove missing or unreadable sources before building.','Retirez les sources absentes ou illisibles avant la création.'],['Estimating disc usage...',"Estimation de l'occupation du disque..."],['A valid estimate is required before building.','Une estimation valide est requise avant la création.'],['This job exceeds the selected disc capacity.','Cette tâche dépasse la capacité du disque sélectionné.'],['Submitting...','Envoi...'],['Job running','Tâche en cours'],['Build the disc and package it as an ISO.',"Créer le disque et le regrouper dans une image ISO."],['Build DVD-Audio files without an ISO.','Créer les fichiers DVD-Audio sans ISO.'],['of {0}','sur {0}'],['Calculating disc and workspace usage...',"Calcul de l'occupation du disque et de l'espace de travail..."],['{0}% used / {1}','{0}% utilisés / {1}'],['Within disc capacity','Capacité du disque suffisante'],['Over capacity','Capacité dépassée'],['Waiting for the source scan...',"En attente de l'analyse des sources..."],['No estimate available.','Aucune estimation disponible.'],['The server returned an invalid estimate.','Le serveur a renvoyé une estimation invalide.'],['Could not estimate: {0}',"Impossible d'estimer : {0}"],['Scanning the library','Analyse de la bibliothèque'],['The server returned an invalid library.','Le serveur a renvoyé une bibliothèque invalide.'],['Library root: {0}','Racine de la bibliothèque : {0}'],['Could not read the library: {0} Click Rescan to retry.','Impossible de lire la bibliothèque : {0} Cliquez sur Analyser à nouveau pour réessayer.'],['Library unavailable. Your saved sequence is preserved.','Bibliothèque indisponible. Votre séquence enregistrée est conservée.'],['Scan failed',"Échec de l'analyse"],
+      ['Running','En cours'],['Completed','Terminé'],['Failed','Échec'],['Error','Erreur'],['Cancelled','Annulé'],['Queued',"Dans la file d'attente"],['Starting','Démarrage'],['Cancelling','Annulation'],['Job state: {0}','État de la tâche : {0}'],['Waiting for build logs...','En attente des journaux de création...'],['Output: {0}','Sortie : {0}'],['ready','prêt'],['missing','absent'],['No tool information received.','Aucune information reçue sur les outils.'],['Application connection: {0} Retrying automatically.',"Connexion à l'application : {0} Nouvelle tentative automatique."],
+      ['Remove "{0}" and its {1} recordings from this project? Source files will not be deleted.','Supprimer "{0}" et ses {1} enregistrements de ce projet ? Les fichiers source ne seront pas supprimés.'],['Project JSON must be smaller than 5 MB.','Le JSON du projet doit faire moins de 5 MB.'],['A build started while reading the project. Try importing again when it finishes.',"Une création a démarré pendant la lecture du projet. Réessayez l'importation quand elle sera terminée."],['Replace the current project with "{0}"?','Remplacer le projet actuel par "{0}" ?'],['Project imported. Track order and repeats are preserved.',"Projet importé. L'ordre des pistes et les répétitions sont conservés."],['Could not import project: {0}',"Impossible d'importer le projet : {0}"],['Could not start job: {0}','Impossible de démarrer la tâche : {0}'],['Cancellation requested. Waiting for the build to stop.',"Annulation demandée. En attente de l'arrêt de la création."],['Could not cancel job: {0}',"Impossible d'annuler la tâche : {0}"],['Could not open saved project: {0} You can import a previously exported project instead.',"Impossible d'ouvrir le projet enregistré : {0} Vous pouvez importer un projet précédemment exporté à la place."]
+    ]);
+    function t(key, ...args) { const en = catalog.get(key) || key; return (language === 'fr' ? french.get(en) || key : language === 'en' ? en : key).replace(/\{(\d+)\}/g,(_,i) => args[i] ?? ''); }
+    // Annotate only the original static DOM, never filenames, project names or diagnostics.
+    const walker = document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    const staticNodes = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.parentElement.closest('script,style,[data-i18n]') && catalog.has(node.textContent.trim())) staticNodes.push(node);
+    }
+    for (const node of staticNodes) {
+      const span = document.createElement('span'); span.dataset.i18n = node.textContent.trim(); node.replaceWith(span);
+    }
+    for (const el of document.querySelectorAll('[aria-label],[title],[placeholder]')) {
+      for (const attr of ['aria-label','title','placeholder']) if (catalog.has(el.getAttribute(attr))) el.setAttribute('data-i18n-' + attr,el.getAttribute(attr));
+    }
+    function translateStatic() {
+      document.documentElement.lang = language; $('language').value = language;
+      for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+      for (const attr of ['aria-label','title','placeholder']) for (const el of document.querySelectorAll('[data-i18n-' + attr + ']')) el.setAttribute(attr,t(el.getAttribute('data-i18n-' + attr)));
+    }
+    translateStatic();
+    const freshProject = () => ({name:t('Tetikasa tsy misy anarana'),format:'dvd-audio',sampleRate:44100,bits:16,channels:2,capacity:'dvd5',iso:true,groups:[{name:t('Vondrona {0}',1),tracks:[]}]});
+    let project = freshProject();
+    let activeGroup = 0, files = [], fileMap = new Map(), selected = new Set();
+    let libraryReady = false, libraryLoading = false, submitting = false, cancelling = false;
+    let statusReady = false, statusHealthy = false, job = null, estimate = null;
+    let estimateTimer, estimateController, revision = 0, estimatePending = false, submissionVersion = 0;
+    const terminalStates = new Set(['done','complete','completed','finished','success','succeeded','failed','failure','error','cancelled','canceled']);
+    const failedStates = new Set(['failed','failure','error','cancelled','canceled']);
+    const isActive = () => !!job && !terminalStates.has(String(job.state).toLowerCase());
+    const locked = () => submitting || isActive();
+    const trackCount = () => project.groups.reduce((sum,g) => sum + g.tracks.length,0);
+    const isVCD = () => project.format === 'vcd';
+    const trackLimit = () => isVCD() ? 98 : 99;
+    const duration = seconds => {
+      if (!Number.isFinite(seconds) || seconds < 0) return '--';
+      const n = Math.round(seconds), h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), s = n % 60;
+      return (h ? h + ':' + String(m).padStart(2,'0') : String(m).padStart(2,'0')) + ':' + String(s).padStart(2,'0');
+    };
+    const bytes = n => Number.isFinite(n) ? (n >= 1e9 ? (n / 1e9).toFixed(2) + ' GB' : (n / 1e6).toFixed(1) + ' MB') : '--';
+    const basename = path => path.split('/').pop() || path;
+    function text(tag, value, className) { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; }
+    const messages = new Map();
+    function message(id, key, ...args) {
+      messages.set(id,[key,...args]);
+      $(id).textContent = key ? t(key,...args.map(arg => arg instanceof Error ? t(arg.message,...(arg.args || [])) : arg)) : '';
+      $(id).hidden = !key;
+    }
+    function validateProject(value) {
+      if (!value || typeof value !== 'object' || typeof value.name !== 'string' || !value.name.trim()) throw new Error('Tsy maintsy manana anarana tsy banga ny tetikasa.');
+      const format = value.format === undefined || value.format === '' ? 'dvd-audio' : value.format;
+      const videoStandard = value.videoStandard === undefined || value.videoStandard === '' ? (format === 'vcd' ? 'pal' : '') : value.videoStandard;
+      if (!['dvd-audio','vcd'].includes(format) || !['','pal','ntsc'].includes(videoStandard)) throw new Error('Tsy mety ny karazana tetikasa na fenitry ny video.');
+      const vcd = format === 'vcd';
+      if (!vcd && (![44100,48000,96000,192000].includes(value.sampleRate) || ![16,24].includes(value.bits) || ![1,2].includes(value.channels))) throw new Error('Tsy tohanana io endrika feo io. Fidio ny tahan\'ny fakana santionany voatanisa, 16/24 bit, ary mono/stereo.');
+      if (!(vcd ? ['cd74','cd80'] : ['dvd5','dvd9']).includes(value.capacity) || (!vcd && typeof value.iso !== 'boolean')) throw new Error('Tsy mety ny fahafahan\'ny kapila na ny fikirana ISO.');
+      if (!Array.isArray(value.groups) || value.groups.length < 1 || value.groups.length > 9) throw new Error('Tsy maintsy misy vondrona 1 hatramin\'ny 9 ny tetikasa.');
+      if (vcd && (value.groups.length !== 1 || !Array.isArray(value.groups[0]?.tracks) || value.groups[0].tracks.length > 98)) throw new Error('VCD: vondrona iray, raki-peo 98 raha be indrindra.');
+      const groups = value.groups.map(g => {
+        if (!g || typeof g.name !== 'string' || !g.name.trim() || !Array.isArray(g.tracks) || g.tracks.length > 99 || g.tracks.some(p => typeof p !== 'string' || !p || p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p) || p.split(/[\\/]/).includes('..'))) throw new Error('Mila anarana sy lalan-drakitra loharano mifandray amin\'ny lahatahiry fototra, tsy mihoatra ny 99, ny vondrona tsirairay.');
+        return {name:g.name,tracks:[...g.tracks]};
+      });
+      return {name:value.name,format,videoStandard,sampleRate:value.sampleRate ?? 0,bits:value.bits ?? 0,channels:value.channels ?? 0,capacity:value.capacity,iso:value.iso ?? false,groups};
+    }
+    async function api(path, options = {}) {
+      const response = await fetch(apiURL(path),{...options,headers:{...(options.body ? {'Content-Type':'application/json'} : {}),...options.headers}});
+      if (response.status === 204 && response.ok) return null;
+      let data;
+      const httpError = () => Object.assign(new Error('Tsy nahomby ny fangatahana (HTTP {0}).'),{args:[response.status]});
+      try { data = await response.json(); } catch { throw response.ok ? new Error('Namerina valiny JSON tsy mety ny lohamilina.') : httpError(); }
+      if (!response.ok) throw typeof data.error === 'string' ? new Error(data.error) : typeof data.message === 'string' ? new Error(data.message) : httpError();
+      return data;
+    }
+    function apiURL(path) { const url = new URL(path,location.href); url.searchParams.set('lang',language); return url.pathname + url.search; }
+    function persist() {
+      try { localStorage.setItem(STORAGE_KEY,JSON.stringify(project)); message('save-state','Voatahiry ho azy ato amin\'ity mpitety tranonkala ity ny tetikasa'); }
+      catch { message('save-state','Tsy azo ampiasaina ny fitahirizan\'ny mpitety tranonkala. Avoahy ho JSON ny tetikasanao mba hitahirizana azy.'); }
+    }
+    function hydrate() {
+      renderFormat();
+      $('project-name').value = project.name;
+      $('sample-rate').value = project.sampleRate;
+      $('bits').value = project.bits;
+      $('channels').value = project.channels;
+      $('capacity').value = project.capacity;
+      $('iso').checked = project.iso;
+      renderSequence();
+      scheduleEstimate();
+    }
+    function renderFormat() {
+      const vcd = isVCD();
+      $('project-format').value = project.format;
+      $('video-standard').value = project.videoStandard || 'pal';
+      $('video-standard-label').hidden = !vcd;
+      for (const id of ['sample-rate','bits','channels','iso']) { $(id).closest('label').hidden = vcd; $(id).disabled = vcd; }
+      $('capacity').replaceChildren(...(vcd ? [['cd74','CD74 / 74 min'],['cd80','CD80 / 80 min']] : [['dvd5','DVD-5 / 4.7 GB'],['dvd9','DVD-9 / 8.5 GB']]).map(([value,label]) => { const option = text('option',label); option.value = value; return option; }));
+      $('capacity').value = project.capacity;
+      $('vcd-note').hidden = !vcd;
+      document.querySelector('.format-note:not(#vcd-note)').hidden = vcd;
+      document.querySelector('#format-title + .count').textContent = vcd ? 'MPEG-1 / MP2' : 'LPCM';
+      document.querySelector('.info-bar').hidden = vcd;
+      document.querySelector('.group-footer span').textContent = t(vcd ? 'VCD: vondrona iray, raki-peo 98 raha be indrindra.' : 'Vondrona 9 raha be indrindra / raki-peo 99 isaky ny vondrona');
+    }
+    function changed(render = false) { persist(); if (render) renderSequence(); scheduleEstimate(); }
+    function renderSequence() {
+      const tabs = $('groups'); tabs.replaceChildren();
+      project.groups.forEach((g,i) => {
+        const b = text('button',String(i + 1).padStart(2,'0'),'group-tab');
+        b.title = g.name; b.setAttribute('aria-label',t('{0}, vondrona {1}',g.name,i + 1)); b.setAttribute('aria-pressed',i === activeGroup);
+        b.onclick = () => { activeGroup = i; renderSequence(); }; tabs.append(b);
+      });
+      const add = text('button',t('+ Vondrona'),'group-tab'); add.disabled = isVCD() || project.groups.length >= 9; add.hidden = isVCD();
+      add.onclick = () => { if (locked() || isVCD() || project.groups.length >= 9) return; project.groups.push({name:t('Vondrona {0}',project.groups.length + 1),tracks:[]}); activeGroup = project.groups.length - 1; changed(true); };
+      tabs.append(add);
+      const group = project.groups[activeGroup];
+      $('group-name').value = group.name;
+      $('remove-group').disabled = project.groups.length === 1;
+      $('remove-group').hidden = isVCD();
+      $('group-count').textContent = t('{0} / {1} RAKI-PEO',group.tracks.length,trackLimit());
+      const known = group.tracks.every(p => fileMap.has(p) && !fileMap.get(p).error);
+      $('group-duration').textContent = known ? duration(group.tracks.reduce((sum,p) => sum + (fileMap.get(p).duration || 0),0)) : '--';
+      const list = $('tracks'); list.replaceChildren();
+      if (!group.tracks.length) {
+        const empty = text('li','','empty'), inner = document.createElement('div');
+        inner.append(text('div','','empty-disc'),text('strong',t('Raki-peo iray no iandohan\'ny kapila tsara rehetra.')),text('span',t('Fidio ny raki-peo ao amin\'ny tahirinao, dia ampio eto.')));
+        empty.append(inner); list.append(empty);
+      }
+      group.tracks.forEach((path,index) => {
+        const row = text('li','','track'), info = text('div','','track-info'), file = fileMap.get(path);
+        info.append(text('div',basename(path),'track-title'));
+        info.title = path;
+        const detail = file?.error ? file.error : !file ? t(libraryReady ? 'Tsy hita ao amin\'ny tahiry ny loharano' : 'Miandry ny fikarohana ny tahiry') : duration(file.duration);
+        info.append(text('span',detail,'file-detail' + ((file?.error || (!file && libraryReady)) ? ' file-error' : '')));
+        const actions = text('div','','track-actions');
+        for (const [label,title,offset] of [['\u2191','Afindrao miakatra ny raki-peo',-1],['\u2193','Afindrao midina ny raki-peo',1],['\u00d7','Esory ny raki-peo',0]]) {
+          const b = text('button',label); b.title = t(title); b.setAttribute('aria-label',t(title) + ': ' + basename(path));
+          b.disabled = offset === -1 && index === 0 || offset === 1 && index === group.tracks.length - 1;
+          b.onclick = () => { if (locked()) return; if (offset) [group.tracks[index],group.tracks[index + offset]] = [group.tracks[index + offset],group.tracks[index]]; else group.tracks.splice(index,1); changed(true); };
+          actions.append(b);
+        }
+        row.append(text('span',String(index + 1).padStart(2,'0'),'track-number'),info,actions); list.append(row);
+      });
+      $('total-tracks').textContent = t('{0} RAKI-PEO',trackCount()); $('track-stat').textContent = trackCount();
+      updateControls();
+    }
+    function visibleFiles() { const query = $('search').value.trim().toLocaleLowerCase(); return files.filter(f => f.path.toLocaleLowerCase().includes(query)); }
+    function renderLibrary() {
+      const visible = visibleFiles(), list = $('library'); list.replaceChildren();
+      $('library-count').textContent = t('{0} amin\'ny loharano {1}',visible.length,files.length);
+      if (!visible.length) list.append(text('p',t(files.length ? 'Tsy misy raki-peo mifanaraka amin\'ny sivanao.' : 'Tsy misy rakitra feo hita ao amin\'ny lahatahiry fototry ny tahiry.'),'notice'));
+      const fragment = document.createDocumentFragment();
+      visible.forEach(file => {
+        const row = text('label','','file-row'), checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.checked = selected.has(file.path); checkbox.disabled = !!file.error;
+        checkbox.setAttribute('aria-label',t('Fidio {0}',file.path));
+        checkbox.onchange = () => { if (checkbox.checked) selected.add(file.path); else selected.delete(file.path); updateControls(); };
+        const info = text('span','','file-info'); info.append(text('span',basename(file.path),'file-name'));
+        info.append(text('span',file.error || [duration(file.duration),(file.sampleRate / 1000) + ' kHz',file.channels === 1 ? 'mono' : file.channels === 2 ? 'stereo' : t('{0} fantsona',file.channels)].join(' / '),'file-detail' + (file.error ? ' file-error' : '')));
+        if (file.path !== basename(file.path)) info.append(text('span',file.path,'file-detail'));
+        row.title = file.path; row.append(checkbox,info); fragment.append(row);
+      });
+      list.append(fragment); updateControls();
+    }
+    function updateControls() {
+      const busy = locked(), count = trackCount(), group = project.groups[activeGroup];
+      for (const id of ['library-controls','sequence-controls','format-controls','project-type-controls']) $(id).disabled = busy;
+      $('import').disabled = busy; $('import-file').disabled = busy; $('export').disabled = submitting; $('reload').disabled = busy || libraryLoading;
+      $('add-tracks').disabled = busy || !selected.size || group.tracks.length + selected.size > trackLimit();
+      $('add-tracks').textContent = selected.size ? t('Ampio raki-peo {0} ao amin\'ny vondrona {1}',selected.size,activeGroup + 1) : t('Ampio ny raki-peo voafidy');
+      $('selection').textContent = group.tracks.length + selected.size > trackLimit() ? t('Mihoatra ny fetra raki-peo {0} ny voafidy.',trackLimit()) : t('{0} voafidy / azo averina ny raki-peo',selected.size);
+      $('select-visible').disabled = !libraryReady || busy;
+      $('cancel').hidden = !isActive(); $('cancel').disabled = submitting || cancelling;
+      $('cancel').textContent = t(cancelling ? 'Eo am-pijanonana...' : 'Ajanony ny asa');
+      let reason = '';
+      if (submitting) reason = 'Mandefa ny asa...';
+      else if (isActive()) reason = 'Misy asa mandeha. Tsy azo ovaina ny tetikasa.';
+      else if (!statusReady || !statusHealthy) reason = 'Miandry fifandraisana amin\'ny rindranasa.';
+      else if (!libraryReady) reason = 'Miandry ny fahavitan\'ny fikarohana ny tahiry.';
+      else if (!count) reason = 'Ampio raki-peo hanombohana ny asa.';
+      else if (!project.name.trim() || project.groups.some(g => !g.name.trim())) reason = 'Omeo anarana ny tetikasa sy ny vondrona tsirairay.';
+      else if (project.groups.some(g => g.tracks.some(p => !fileMap.has(p) || fileMap.get(p).error))) reason = 'Esory ny loharano tsy hita na tsy azo vakina alohan\'ny famoronana.';
+      else if (estimatePending) reason = 'Manombana ny habaka amin\'ny kapila...';
+      else if (!estimate) reason = 'Mila tombana manan-kery alohan\'ny famoronana.';
+      else if (!estimate.fits) reason = 'Mihoatra ny fahafahan\'ny kapila voafidy ity asa ity.';
+      $('build').disabled = !!reason; $('build').textContent = t(submitting ? 'Mandefa...' : isActive() ? 'Mandeha ny asa' : isVCD() ? 'Forony ny Video CD' : 'Forony ny DVD-Audio');
+      $('build-hint').textContent = t(reason || (isVCD() ? 'Mamorona Video CD ho BIN/CUE.' : project.iso ? 'Mamorona kapila ary fonosy ho rakitra ISO.' : 'Mamorona rakitra DVD-Audio tsy misy ISO.'));
+    }
+    function renderEstimate() {
+      const mediaSeconds = (project.capacity === 'cd74' ? 74 : 80) * 60;
+      $('media-label').textContent = isVCD() ? project.capacity.toUpperCase() : project.capacity === 'dvd5' ? 'DVD-5' : 'DVD-9';
+      $('capacity-size').textContent = t('amin\'ny {0}',isVCD() ? duration(mediaSeconds) : estimate ? bytes(estimate.capacityBytes) : project.capacity === 'dvd5' ? '4.7 GB' : '8.5 GB');
+      $('estimated-size').textContent = estimate ? isVCD() ? duration(estimate.duration) : bytes(estimate.estimatedBytes) : '--';
+      $('duration').textContent = estimate ? duration(estimate.duration) : '--';
+      $('pcm').textContent = isVCD() ? t('Tsy mihatra') : estimate ? bytes(estimate.pcmBytes) : '--';
+      $('workspace').textContent = estimate ? bytes(estimate.workspaceBytes) : '--';
+      const percent = estimate ? isVCD() ? estimate.duration / mediaSeconds * 100 : estimate.capacityBytes > 0 ? estimate.estimatedBytes / estimate.capacityBytes * 100 : 0 : 0;
+      $('meter-fill').style.width = Math.min(100,Math.max(0,percent)) + '%';
+      $('meter-fill').style.background = estimate && !estimate.fits ? 'var(--red)' : 'var(--amber)';
+      $('meter').setAttribute('aria-valuenow',Math.min(100,Math.max(0,percent)).toFixed(1));
+      $('estimate-state').textContent = estimatePending ? t('Manisa ny habaka ampiasaina amin\'ny kapila sy hiasana...') : estimate ? t('{0}% ampiasaina / {1}',percent.toFixed(1),t(estimate.fits ? 'Tsy mihoatra ny fahafahan\'ny kapila' : 'Mihoatra ny fahafahana')) : t(!trackCount() ? 'Ampio raki-peo hanombanana ny kapila.' : !libraryReady ? 'Miandry ny fikarohana ny loharano...' : 'Tsy misy tombana azo ampiasaina.');
+      updateControls();
+    }
+    function scheduleEstimate() {
+      clearTimeout(estimateTimer); estimateController?.abort();
+      const version = ++revision; estimate = null; estimatePending = false; message('estimate-error','');
+      if (!libraryReady || !trackCount()) { renderEstimate(); return; }
+      estimatePending = true; renderEstimate();
+      estimateTimer = setTimeout(async () => {
+        const controller = new AbortController(); estimateController = controller;
+        try {
+          const result = await api('/api/estimate',{method:'POST',body:JSON.stringify(project),signal:controller.signal});
+          if (version !== revision) return;
+          if (!['duration','pcmBytes','estimatedBytes','capacityBytes','workspaceBytes'].every(k => Number.isFinite(result[k]) && result[k] >= 0) || result.capacityBytes === 0 || typeof result.fits !== 'boolean') throw new Error('Namerina tombana tsy mety ny lohamilina.');
+          estimate = result;
+        } catch (error) { if (version !== revision || error.name === 'AbortError') return; message('estimate-error','Tsy azo natao ny fanombanana: {0}',error); }
+        finally { if (version === revision) { estimatePending = false; renderEstimate(); } }
+      },450);
+    }
+    let libraryRoot = null;
+    function renderLibraryState() {
+      if (libraryRoot !== null) $('library-root').textContent = t('Lahatahiry fototry ny tahiry: {0}',libraryRoot);
+      if (libraryReady) { renderLibrary(); return; }
+      const note = text('p','','notice');
+      if (libraryLoading) note.append(text('span','','spinner'),document.createTextNode(t('Mikaroka rakitra feo. Mety haharitra ny fikarohana voalohany amin\'ny ffprobe.')));
+      else note.textContent = t('Tsy azo ampiasaina ny tahiry. Voatazona ny filaharana voatahiry.');
+      $('library').replaceChildren(note);
+      $('library-count').textContent = t(libraryLoading ? 'Mikaroka ao amin\'ny tahiry' : 'Tsy nahomby ny fikarohana');
+    }
+    async function loadLibrary() {
+      if (libraryLoading || locked()) return;
+      libraryLoading = true; libraryReady = false; scheduleEstimate(); updateControls();
+      message('library-error',''); $('library').setAttribute('aria-busy','true');
+      renderLibraryState();
+      try {
+        const data = await api('/api/library');
+        if (!Array.isArray(data.files) || data.files.some(f => !f || typeof f.path !== 'string')) throw new Error('Namerina tahiry tsy mety ny lohamilina.');
+        files = data.files; fileMap = new Map(files.map(f => [f.path,f]));
+        selected = new Set([...selected].filter(p => fileMap.has(p) && !fileMap.get(p).error));
+        libraryReady = true; libraryRoot = data.root; renderSequence();
+      } catch (error) { message('library-error','Tsy azo novakina ny tahiry: {0} Tsindrio ny Karohy indray hanandramana indray.',error); }
+      finally { libraryLoading = false; renderLibraryState(); $('library').setAttribute('aria-busy','false'); scheduleEstimate(); updateControls(); }
+    }
+    function renderJob() {
+      const stateLabels = {running:'Mandeha',done:'Vita',complete:'Vita',completed:'Vita',finished:'Vita',success:'Vita',succeeded:'Vita',failed:'Tsy nahomby',failure:'Tsy nahomby',error:'Nisy hadisoana',cancelled:'Najanona',canceled:'Najanona',queued:'Milahatra',pending:'Miandry',starting:'Manomboka',cancelling:'Eo am-pijanonana',canceling:'Eo am-pijanonana'};
+      $('job-state').textContent = job ? (stateLabels[String(job.state).toLowerCase()] ? t(stateLabels[String(job.state).toLowerCase()]) : t('Toetry ny asa: {0}',job.state)) : t('Miandry');
+      const log = $('log'), atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      const content = job ? (Array.isArray(job.log) ? job.log.join('\n') : '') || t('Miandry ny tatitra momba ny famoronana...') : t('Vonona rehefa vonona ianao. Hiseho eto ny tatitra momba ny famoronana.');
+      if (log.textContent !== content) { log.textContent = content; if (atBottom) log.scrollTop = log.scrollHeight; }
+      // Job errors and logs may include raw external diagnostics; never translate them.
+      $('job-error').textContent = job?.error || ''; $('job-error').hidden = !job?.error;
+      message('job-output',job?.output ? 'Vokatra: {0}' : '',job?.output);
+      const successful = job && (!job.kind || job.kind === 'author') && terminalStates.has(String(job.state).toLowerCase()) && !failedStates.has(String(job.state).toLowerCase()) && !job.error;
+      $('download').hidden = !(successful && typeof job.output === 'string' && /\.iso$/i.test(job.output));
+      if (!$('download').hidden) $('download').href = apiURL('/api/download?id=' + encodeURIComponent(job.id));
+      $('vcd-downloads').hidden = !(successful && typeof job.output === 'string' && /\/disc\.cue$/.test(job.output));
+      if (!$('vcd-downloads').hidden) for (const file of ['cue','bin']) $('download-' + file).href = apiURL('/api/download?id=' + encodeURIComponent(job.id) + '&file=' + file);
+      updateControls();
+    }
+    let statusTimer, statusLoading = false, statusRefresh = false, toolsData = null;
+    function renderTools() {
+      const tools = $('tools'), details = $('tool-details'); tools.replaceChildren(); details.replaceChildren();
+      if (toolsData === null) { tools.append(text('span',t('Manamarina ny fitaovana eto an-toerana...'),'muted')); return; }
+      for (const tool of toolsData) {
+        const badge = text('span','','tool' + (tool.ready ? '' : ' bad'));
+        badge.append(text('span','','dot'),document.createTextNode(tool.name + ' / ' + t(tool.ready ? 'vonona' : 'tsy hita'))); badge.title = tool.detail || tool.path || ''; tools.append(badge);
+        details.append(text('p',tool.name + ': ' + (tool.path || t('tsy hita')) + (tool.detail ? ' / ' + tool.detail : '')));
+      }
+      if (!toolsData.length) tools.append(text('span',t('Tsy nisy fampahalalana momba ny fitaovana ilaina voaray.'),'muted'));
+    }
+    async function pollStatus() {
+      clearTimeout(statusTimer);
+      if (statusLoading) { statusRefresh = true; return; }
+      statusLoading = true; statusRefresh = false;
+      const version = submissionVersion, localeVersion = languageVersion;
+      try {
+        const data = await api('/api/status');
+        if (localeVersion !== languageVersion) return;
+        statusReady = true; statusHealthy = true; message('status-error','');
+        toolsData = data.tools || []; renderTools();
+        if (!submitting && version === submissionVersion) { job = data.job; renderJob(); }
+      } catch (error) { if (localeVersion === languageVersion) { statusHealthy = false; message('status-error','Fifandraisana amin\'ny rindranasa: {0} Hanandrana indray ho azy.',error); } }
+      finally { statusLoading = false; updateControls(); statusTimer = setTimeout(pollStatus,statusRefresh ? 0 : isActive() ? 1200 : 3000); }
+    }
+    $('language').onchange = () => {
+      language = ['plt','en','fr'].includes($('language').value) ? $('language').value : 'plt'; languageVersion++;
+      try { localStorage.setItem(LANGUAGE_KEY,language); } catch {}
+      translateStatic();
+      renderFormat();
+      for (const [id,args] of messages) message(id,...args);
+      renderSequence(); renderLibraryState(); renderTools(); renderJob();
+      scheduleEstimate(); pollStatus();
+    };
+    $('search').addEventListener('input',() => { if (libraryReady) renderLibrary(); });
+    $('reload').onclick = loadLibrary;
+    $('select-visible').onclick = () => {
+      const available = visibleFiles().filter(f => !f.error), all = available.length > 0 && available.every(f => selected.has(f.path));
+      available.forEach(f => all ? selected.delete(f.path) : selected.add(f.path)); renderLibrary();
+    };
+    $('add-tracks').onclick = () => {
+      if (locked() || !selected.size) return;
+      const group = project.groups[activeGroup];
+      if (group.tracks.length + selected.size > trackLimit()) return;
+      group.tracks.push(...selected); selected.clear(); changed(true); renderLibrary();
+    };
+    $('project-name').oninput = event => { project.name = event.target.value; changed(); };
+    $('project-format').onchange = event => {
+      const format = event.target.value;
+      if (locked()) { event.target.value = project.format; return; }
+      if (format === project.format) return;
+      if (format === 'vcd') {
+        if (trackCount() > 98) { message('feedback','Tsy azo avadika ho VCD: mihoatra ny 98 ny raki-peo. Voatazona ny tetikasa.'); event.target.value = project.format; return; }
+        if (project.groups.length > 1 && !confirm(t("Atambatra ho vondrona iray ve ireo vondrona? Voatazona ny raki-peo rehetra sy ny filaharany, fa ny anaran'ny vondrona voalohany ihany no tazonina."))) { event.target.value = project.format; return; }
+        project.groups = [{name:project.groups[0].name,tracks:project.groups.flatMap(g => g.tracks)}];
+      } else {
+        if (![44100,48000,96000,192000].includes(project.sampleRate)) project.sampleRate = 44100;
+        if (![16,24].includes(project.bits)) project.bits = 16;
+        if (![1,2].includes(project.channels)) project.channels = 2;
+      }
+      project.format = format; project.capacity = format === 'vcd' ? 'cd80' : 'dvd5';
+      project.videoStandard = format === 'vcd' ? project.videoStandard || 'pal' : '';
+      activeGroup = 0; persist(); hydrate();
+    };
+    $('video-standard').onchange = event => { if (locked()) return; project.videoStandard = event.target.value; changed(); };
+    $('group-name').oninput = event => { project.groups[activeGroup].name = event.target.value; const tab = $('groups').children[activeGroup]; tab.title = event.target.value; tab.setAttribute('aria-label',t('{0}, vondrona {1}',event.target.value,activeGroup + 1)); changed(); };
+    $('remove-group').onclick = () => {
+      if (locked() || project.groups.length === 1) return;
+      const group = project.groups[activeGroup];
+      if (group.tracks.length && !confirm(t('Esorina amin\'ity tetikasa ity ve ny "{0}" sy ny raki-peo {1} ao aminy? Tsy ho voafafa ny rakitra loharano.',group.name,group.tracks.length))) return;
+      project.groups.splice(activeGroup,1); activeGroup = Math.min(activeGroup,project.groups.length - 1); changed(true);
+    };
+    for (const [id,key] of [['sample-rate','sampleRate'],['bits','bits'],['channels','channels'],['capacity','capacity'],['iso','iso']]) {
+      $(id).onchange = event => { project[key] = key === 'iso' ? event.target.checked : key === 'capacity' ? event.target.value : Number(event.target.value); changed(); };
+    }
+    $('export').onclick = () => {
+      const blob = new Blob([JSON.stringify(project,null,2) + '\n'],{type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+      link.href = url; link.download = (project.name.replace(/[^a-z0-9_-]+/gi,'-').slice(0,80) || 'dvd-audio-project') + '.json';
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url),1000);
+    };
+    $('import').onclick = () => { if (!locked()) $('import-file').click(); };
+    $('import-file').onchange = async event => {
+      const file = event.target.files[0]; event.target.value = ''; if (!file || locked()) return;
+      try {
+        if (file.size > 5 * 1024 * 1024) throw new Error('Tsy maintsy latsaky ny 5 MB ny rakitra JSON an\'ny tetikasa.');
+        const imported = validateProject(JSON.parse(await file.text()));
+        if (locked()) throw new Error('Nanomboka ny famoronana teo am-pamakiana ny tetikasa. Andramo ampidirina indray rehefa vita izany.');
+        if (trackCount() && !confirm(t('Hosoloina "{0}" ve ny tetikasa ankehitriny?',imported.name))) return;
+        project = imported; activeGroup = 0; selected.clear(); persist(); hydrate(); if (libraryReady) renderLibrary(); message('feedback','Tafiditra ny tetikasa. Voatazona ny filaharan\'ny raki-peo sy ireo miverimberina.');
+      } catch (error) { message('feedback','Tsy tafiditra ny tetikasa: {0}',error); }
+    };
+    $('build').onclick = async () => {
+      if ($('build').disabled || locked()) return;
+      submitting = true; submissionVersion++; updateControls(); message('feedback','');
+      try { validateProject(project); job = await api('/api/jobs',{method:'POST',body:JSON.stringify(project)}); renderJob(); }
+      catch (error) { message('feedback','Tsy afaka nanomboka ny asa: {0}',error); }
+      finally { submitting = false; renderJob(); }
+    };
+    $('cancel').onclick = async () => {
+      if (!isActive() || cancelling || submitting) return;
+      cancelling = true; updateControls();
+      try { await api('/api/cancel',{method:'POST'}); message('feedback','Nalefa ny fangatahana fampijanonana. Miandry ny fijanonan\'ny famoronana.'); }
+      catch (error) { message('feedback','Tsy afaka nampijanona ny asa: {0}',error); }
+      finally { cancelling = false; updateControls(); }
+    };
+    try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) project = validateProject(JSON.parse(saved)); }
+    catch (error) { message('feedback','Tsy azo nosokafana ny tetikasa voatahiry: {0} Azonao ampidirina kosa ny tetikasa efa navoaka ho rakitra.',error); }
+    hydrate(); pollStatus(); loadLibrary();
+  </script>
+</body>
+</html>

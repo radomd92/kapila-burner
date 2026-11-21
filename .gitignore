@@ -1,0 +1,21 @@
+# Generated job output and the default Go build binary.
+/output/
+/dvd-audio-studio
+/dvd-audio-gtk
+/dvd-audio-studio.exe
+/dvd-audio-gtk.exe
+/dist/
+
+# Large extracted tool payloads and package archives, not tools/bin launchers.
+/tools/opt/
+/tools/usr/
+/tools/*.deb
+/tools/*.tar
+/tools/*.tar.*
+/tools/*.zip
+/tools/gtk-dev/cache/
+/tools/gtk-dev/sysroot/
+/tools/gtk-dev/debs/
+/tools/gtk-dev/smoke/
+/tools/gtk-dev/check-gtk
+/tools/gtk-dev/check-gotk3

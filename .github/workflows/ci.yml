@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-amd64
+            runner: ubuntu-22.04
+          - platform: windows-amd64
+            runner: windows-2022
+          - platform: macos-amd64
+            runner: macos-15-intel
+    env:
+      CGO_CFLAGS: -O0 -g0 -Wno-deprecated-declarations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: true
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev pkg-config build-essential ffmpeg vcdimager cdrdao xvfb xauth
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install gtk+3 pkg-config
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          update: true
+          install: >-
+            mingw-w64-x86_64-gtk3
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-gcc
+            make
+            zip
+      - name: Race tests, vet, and real VCD authoring (no physical burn)
+        if: runner.os == 'Linux'
+        env:
+          VCD_INTEGRATION: '1'
+        run: make test
+      - name: GTK tests and headless language smoke checks (no physical burn)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a make test-gtk
+          xvfb-run -a make smoke-gtk
+      - name: Package Linux and macOS executables
+        if: runner.os != 'Windows'
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: make package
+      - name: Package Windows executables and GTK runtime
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: make package
+      - name: Upload executable archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: kapila-burner-${{ matrix.platform }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish executables
+    needs: build
+    if: >-
+      github.event_name != 'pull_request' &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kapila-burner-*
+          merge-multiple: true
+          path: dist
+      - name: Publish versioned or rolling release with checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash scripts/release.sh
