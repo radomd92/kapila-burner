@@ -42,10 +42,13 @@ Load command 2
           cmd LC_ID_DYLIB
          name @rpath/self.dylib (offset 24)
 """
-        with patch.object(bundle, "run", side_effect=["", text]):
+        with patch.object(bundle, "run", side_effect=["", text]) as command:
             self.assertEqual(bundle.metadata(Path("test")),
-                             (["/some path/libtest.dylib"], ["@loader_path/../lib"],
-                              "@rpath/self.dylib"))
+                              (["/some path/libtest.dylib"], ["@loader_path/../lib"],
+                               "@rpath/self.dylib"))
+            # -verify_arch takes a variable-length list; put the input first.
+            self.assertEqual(command.call_args_list[0].args,
+                             ("lipo", Path("test"), "-verify_arch", "x86_64"))
 
     def test_recursive_graph_and_nested_module(self):
         main = self.image(self.stage / "kapila-maker")

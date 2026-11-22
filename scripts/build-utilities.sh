@@ -67,9 +67,18 @@ compiler_version=$("$compiler" --version)
 make_version=$("$make" --version)
 patch_version=$("$patchcmd" --version)
 dependency_versions=$(pkg-config --modversion libpng zlib libcdio libiso9660 popt)
+winpthread_hash=
+if [[ $platform == WindowsMINGW64 ]]; then
+    winpthread_lib=$("$compiler" -print-file-name=libwinpthread.a)
+    winpthread_license="${MINGW_PREFIX:-/mingw64}/share/licenses/winpthreads/COPYING"
+    winpthread_hash=$(sha256 "$winpthread_lib")
+    winpthread_hash=${winpthread_hash%% *}
+    winpthread_notice_hash=$(sha256 "$winpthread_license")
+    winpthread_hash+=" ${winpthread_notice_hash%% *}"
+fi
 recipe=$({
     printf '%s\n' "$platform" "$triplet" "$(uname -m)" "$(command -v "$compiler")" \
-        "$compiler_version" "$make_version" "$patch_version" "$dependency_versions"
+        "$compiler_version" "$make_version" "$patch_version" "$dependency_versions" "$winpthread_hash"
     printf '%s\n' "CFLAGS=${CFLAGS:-}" "CPPFLAGS=${CPPFLAGS:-}" "CXXFLAGS=${CXXFLAGS:-}" \
         "LDFLAGS=${LDFLAGS:-}" "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-}" \
         "PKG_CONFIG_LIBDIR=${PKG_CONFIG_LIBDIR:-}" "SDKROOT=${SDKROOT:-}" \
@@ -91,6 +100,63 @@ printf 'Building native utilities: %s, %s jobs\n' "$platform" "$jobs"
 printf 'Recipe SHA-256: %s\nRecipe work directory: %s\nShared downloads: %s\n' "$recipe" "$work" "$downloads"
 printf 'Patch command: %s\n' "$patchcmd"
 printf 'Make command: %s\n' "$make"
+run_utility() {
+    local status native
+    if "$@"; then return 0; else status=$?; fi
+    printf 'Utility command failed (status %s): ' "$status" >&2
+    printf '%q ' "$@" >&2
+    printf '\n' >&2
+    sha256 "$1" || true
+    if [[ $platform == WindowsMINGW64 ]]; then
+        printf 'Windows loader diagnostics; PATH=%s\n' "$PATH" >&2
+        if command -v objdump >/dev/null; then objdump -p "$1" || true; fi
+        if command -v ldd >/dev/null; then ldd "$1" || true; fi
+        native=$(cygpath -w "$1")
+        if command -v powershell.exe >/dev/null; then
+            UTILITY_DIAGNOSTIC_EXE="$native" MSYS2_ARG_CONV_EXCL='*' \
+                powershell.exe -NoLogo -NoProfile -NonInteractive -Command '
+try {
+    Add-Type -TypeDefinition @"
+using System.Runtime.InteropServices;
+public static class UtilityLoaderDiagnostics {
+    [DllImport("kernel32.dll")] public static extern uint SetErrorMode(uint mode);
+}
+"@
+    [void][UtilityLoaderDiagnostics]::SetErrorMode(0x8003)
+    foreach ($mode in @("direct", "cmd")) {
+        $p = New-Object System.Diagnostics.Process
+        $p.StartInfo.UseShellExecute = $false
+        $p.StartInfo.CreateNoWindow = $true
+        if ($mode -eq "direct") {
+            $p.StartInfo.FileName = $env:UTILITY_DIAGNOSTIC_EXE
+            $p.StartInfo.Arguments = "-h"
+        } else {
+            $p.StartInfo.FileName = $env:ComSpec
+            $q = [char]34
+            $p.StartInfo.Arguments = "/d /c " + $q + $q + $env:UTILITY_DIAGNOSTIC_EXE + $q + " -h" + $q
+        }
+        [void]$p.Start()
+        if (!$p.WaitForExit(10000)) {
+            $p.Kill()
+            Write-Output ("Native {0} help probe timed out" -f $mode)
+            continue
+        }
+        $code = $p.ExitCode
+        $unsigned = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$code), 0)
+        Write-Output ("Native {0} exit: {1} (0x{2:X8})" -f $mode, $code, $unsigned)
+        $p.Dispose()
+    }
+} catch {
+    Write-Output ("Native loader probe failed: " + $_.Exception.ToString())
+    exit 1
+}
+' || true
+        elif command -v cmd.exe >/dev/null; then
+            MSYS2_ARG_CONV_EXCL='*' cmd.exe /d /c "\"$native\" -h" || true
+        fi
+    fi
+    return "$status"
+}
 verify_payload() {
     local root=$1 tool option name archive digest url license actual
     [[ -s $root/BUILD-UTILITIES.txt && -s $root/SOURCE-ARCHIVES/utility-sources.tsv ]] || return 1
@@ -249,6 +315,7 @@ avprefix="$dvda/local"
 )
 cp "$work/src/schilytools/mkisofs/COPYING" "$stage/tools/share/licenses/mkisofs.txt"
 cp "$work/src/schilytools/CDDL.Schily.txt" "$stage/tools/share/licenses/Schily-CDDL.txt"
+run_utility "$stage/tools/bin/mkisofs$exe" -version
 (
     cd "$work/src/ffmpeg"
     ./configure --prefix="$avprefix" --cc="$compiler" \
@@ -270,17 +337,23 @@ cp "$work/src/ffmpeg/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg-priva
     export CFLAGS="${CFLAGS:--O2} -std=gnu99"
     liberty=
     winlibs=
+    winldflags=
     if [[ $platform == WindowsMINGW64 ]]; then
         liberty="$dvda/libiberty/src/libiberty.a"
         winlibs='-lwinmm -lbcrypt'
+        winldflags='-static -static-libgcc'
     fi
     avlibs=$(PKG_CONFIG_PATH="$avprefix/lib/pkgconfig" pkg-config --static --libs libavfilter libavformat libavcodec libswscale libswresample libavutil)
     "$make" -B -C src -j"$jobs" CC="$compiler" \
         LDLIBS="$dvda/libutils/src/libc_utils.a $dvda/libfixwav/src/libfixwav.a $liberty $avlibs $winlibs -lm" \
-        LDFLAGS="${LDFLAGS:-}" dvda-author
+        LDFLAGS="${LDFLAGS:-} $winldflags" dvda-author
     cp "src/dvda-author$exe" "$stage/tools/bin/dvda-author$exe"
 )
 cp "$dvda/COPYING" "$stage/tools/share/licenses/dvda-author.txt"
+if [[ $platform == WindowsMINGW64 ]]; then
+    cp "$winpthread_license" "$stage/tools/share/licenses/Winpthreads.txt"
+fi
+run_utility "$stage/tools/bin/dvda-author$exe" -h
 (
     cd "$work/src/ffmpeg-modern"
     ./configure --prefix="$work/ffmpeg-modern-install" --cc="$compiler" \
@@ -295,6 +368,8 @@ cp "$dvda/COPYING" "$stage/tools/share/licenses/dvda-author.txt"
 )
 cp "$work/ffmpeg-modern-install/bin/ffmpeg$exe" "$work/ffmpeg-modern-install/bin/ffprobe$exe" "$stage/tools/bin/"
 cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg.txt"
+run_utility "$stage/tools/bin/ffmpeg$exe" -version
+run_utility "$stage/tools/bin/ffprobe$exe" -version
 (
     cd "$work/src/vcdimager"
     CC="$compiler" CFLAGS="${CFLAGS:--O2} -std=gnu99 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
@@ -305,6 +380,7 @@ cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpe
     cp "frontends/cli/vcdimager$exe" "$stage/tools/bin/"
 )
 cp "$work/src/vcdimager/COPYING" "$stage/tools/share/licenses/VCDImager.txt"
+run_utility "$stage/tools/bin/vcdimager$exe" --version
 bin="$stage/tools/bin"
 smoke=$(mktemp -d "$work/smoke.XXXXXX")
 mkdir -p "$smoke/audio" "$smoke/lplex" "$smoke/lplex-output"
@@ -315,7 +391,7 @@ for bits in 16 24; do
         -c:a "pcm_s${bits}le" -rf64 never "$smoke/audio$bits.wav"
     "$bin/ffprobe$exe" -v error -show_entries stream=codec_name,sample_rate,channels \
         -of default=noprint_wrappers=1 "$smoke/audio$bits.wav"
-    "$bin/dvda-author$exe" -W --bindir "$bin" --datadir "$stage/tools/share/dvda-author" \
+    run_utility "$bin/dvda-author$exe" -W --bindir "$bin" --datadir "$stage/tools/share/dvda-author" \
         --workdir "$smoke" -D "$smoke/audio" --lplex-tempdir "$smoke/lplex" \
         --lplex-output "$smoke/lplex-output" -P0 -o "$smoke/DVD-$bits" -g "$smoke/audio$bits.wav"
     test -s "$smoke/DVD-$bits/AUDIO_TS/AUDIO_TS.IFO"
@@ -362,6 +438,9 @@ done
     printf 'Recipe SHA-256: %s\nRecipe work directory: %s\n' "$recipe" "$work"
     "$compiler" --version
     "$patchcmd" --version
+    if [[ $platform == WindowsMINGW64 ]]; then
+        printf 'Static winpthreads library and notice SHA-256: %s\n' "$winpthread_hash"
+    fi
     printf '\nNative dependency versions (packaging must retain their sources):\n'
     for dep in libpng zlib libcdio libiso9660 popt; do
         printf '%s: %s\n' "$dep" "$(pkg-config --modversion "$dep")"
@@ -376,6 +455,7 @@ done
     printf 'Public FFmpeg: all built-in input decoders/demuxers and muxers; output encoders limited to PCM16/24, MP2 and MPEG-1 video.\n'
     printf 'Public filters: buffer/sink, aresample/aformat/anull/anullsrc, color/sine, scale/pad/setsar/setdar/format/fps/tpad/apad.\n'
     printf 'Windows mkisofs uses native x86-64 MinGW rules (OSNAME=mingw32_nt), not Cygwin/MSYS libc.\n'
+    printf 'Windows dvda-author statically links MinGW runtime dependencies (-static -static-libgcc); winpthreads MIT/BSD notice is bundled.\n'
     printf 'Legacy FFmpeg executables are neither built nor shipped; public ffmpeg/ffprobe use 9.0.2.\n'
     printf 'Use -W and existing --bindir, --datadir, --workdir, -D, --lplex-tempdir, --lplex-output paths.\n'
     printf 'Core author accepts PCM WAV; application FFmpeg handles other inputs.\n'

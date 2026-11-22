@@ -51,7 +51,7 @@ def images(stage):
 
 def metadata(path):
     # -arch prevents duplicate load commands for universal binaries.
-    run("lipo", "-verify_arch", "x86_64", path)
+    run("lipo", path, "-verify_arch", "x86_64")
     text = run("otool", "-arch", "x86_64", "-l", path)
     deps, rpaths, identity = [], [], None
     command = None
