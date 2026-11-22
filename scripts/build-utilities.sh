@@ -277,8 +277,8 @@ cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpe
     CC="$compiler" CFLAGS="${CFLAGS:--O2} -std=gnu99 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
         ./configure --prefix="$work/vcd-install" --disable-shared --enable-static \
         --without-xml-frontend --build="$triplet" --host="$triplet"
-    "$make" -C lib -j"$jobs"
-    "$make" -C frontends/cli -j"$jobs"
+    "$make" -C lib -j"$jobs" libvcd.la
+    "$make" -C frontends/cli -j"$jobs" "vcdimager$exe"
     cp "frontends/cli/vcdimager$exe" "$stage/tools/bin/"
 )
 cp "$work/src/vcdimager/COPYING" "$stage/tools/share/licenses/VCDImager.txt"

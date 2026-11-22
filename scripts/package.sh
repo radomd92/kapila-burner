@@ -19,6 +19,26 @@ package="dist/$name"
 # Only clean this script's generated, platform-specific staging directory.
 rm -rf -- "$package"
 mkdir -p "$package"
+# Preserve notices for code linked into the Go executables as well as utilities.
+mkdir -p "$package/THIRD-PARTY-LICENSES/Go" "$package/THIRD-PARTY-LICENSES/gotk3" "$package/THIRD-PARTY-LICENSES/x-sys"
+go mod download
+go_root=$(go env GOROOT)
+gtk_source=$(go list -m -f '{{.Dir}}' github.com/gotk3/gotk3)
+sys_source=$(go list -m -f '{{.Dir}}' golang.org/x/sys)
+if [[ $os == windows ]]; then
+  go_root=$(cygpath -u "$go_root")
+  gtk_source=$(cygpath -u "$gtk_source")
+  sys_source=$(cygpath -u "$sys_source")
+fi
+go_license="$go_root/LICENSE"
+if [[ ! -f $go_license && $os == linux ]]; then
+  version=$(go env GOVERSION); version=${version#go}
+  IFS=. read -r major minor rest <<< "$version"
+  go_license="/usr/share/doc/golang-$major.$minor-go/copyright"
+fi
+cp "$go_license" "$package/THIRD-PARTY-LICENSES/Go/LICENSE"
+cp "$gtk_source/LICENSE" "$package/THIRD-PARTY-LICENSES/gotk3/LICENSE"
+cp "$sys_source/LICENSE" "$package/THIRD-PARTY-LICENSES/x-sys/LICENSE"
 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$package/kapila-maker-web$suffix" .
 export CGO_CFLAGS="${CGO_CFLAGS:--O0 -g0 -Wno-deprecated-declarations}"
 # Match make gtk's dependency build flags to reuse the expensive gotk3 cache.
