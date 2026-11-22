@@ -41,7 +41,7 @@ func main() {
 	if len(args) > 0 && args[0] == "web" {
 		args = args[1:]
 	}
-	flags := flag.NewFlagSet("web", flag.ExitOnError)
+	flags := flag.NewFlagSet("kapila-maker-web", flag.ExitOnError)
 	root := flags.String("root", defaultRoot, "Audio library root directory")
 	output := flags.String("output", defaultOutput, "Authoring output directory")
 	listen := flags.String("listen", "127.0.0.1:8787", "Loopback listen address")
@@ -81,7 +81,7 @@ func main() {
 		defer done()
 		_ = server.Shutdown(ctx)
 	}()
-	log.Printf("DVD-Audio Studio: http://%s\nLibrary: %s\nOutput: %s", ln.Addr(), engine.Root(), engine.Output())
+	log.Printf("kapila-maker-web: http://%s\nLibrary: %s\nOutput: %s", ln.Addr(), engine.Root(), engine.Output())
 	if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Print(err)
 	}

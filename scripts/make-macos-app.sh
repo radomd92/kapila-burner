@@ -4,15 +4,15 @@ set -euo pipefail
 scripts=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 stage=$(cd "$1" && pwd)
 output=$(cd "$2" && pwd)
-app="$stage/Kapila Burner.app"
+app="$stage/kapila-maker.app"
 python3 -B "$scripts/macruntime/make_app.py" "$stage"
 # Check the relocated app, not just the intermediate flat bundle.
 python3 -B "$scripts/macruntime/bundle.py" --verify-only "$app/Contents"
 python3 -B "$scripts/smoke-bundle.py" "$app/Contents"
 dmg_stage=$(mktemp -d "${TMPDIR:-/tmp}/kapila-dmg.XXXXXXXX")
 trap 'rm -rf -- "$dmg_stage"' EXIT
-ditto "$app" "$dmg_stage/Kapila Burner.app"
+ditto "$app" "$dmg_stage/kapila-maker.app"
 cp "$stage/README.txt" "$dmg_stage/README.txt"
 ln -s /Applications "$dmg_stage/Applications"
-hdiutil create -volname 'Kapila Burner' -srcfolder "$dmg_stage" -ov -format UDZO \
-  "$output/kapila-burner-macos-amd64.dmg"
+hdiutil create -volname 'kapila-maker' -srcfolder "$dmg_stage" -ov -format UDZO \
+  "$output/kapila-maker-macos-amd64.dmg"

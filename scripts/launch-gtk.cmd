@@ -11,7 +11,7 @@ if errorlevel 1 (
   del "%GDK_PIXBUF_MODULE_FILE%" 2>nul
   exit /b 1
 )
-"%~dp0kapila-burner.exe" %*
+"%~dp0kapila-maker.exe" %*
 set "result=%ERRORLEVEL%"
 del "%GDK_PIXBUF_MODULE_FILE%"
 exit /b %result%

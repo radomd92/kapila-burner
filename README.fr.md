@@ -1,8 +1,10 @@
-# Kapila Burner
+# kapila-maker
 
 [Malagasy (Plateau)](README.md) | [English](README.en.md) | **Français**
 
 [![CI](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml/badge.svg)](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
+
+L'application s'appelle `kapila-maker` ; son dépôt GitHub garde le nom `kapila-burner`.
 
 Un atelier local pour créer des disques **DVD-Audio LPCM non compressé** et des
 images **Video CD 2.0**, avec une interface native GTK ou une interface web locale.
@@ -14,23 +16,25 @@ La création d'une image précède toute gravure : rien n'est gravé automatique
 Préversion continue (`continuous`), actualisée après une CI réussie.
 
 **Transition en cours : la vérification des nouveaux paquets est en attente.**
-La version actuellement publiée reste l'ancienne, avec outils d'authoring externes.
-Les liens des nouveaux installateurs ci-dessous sont **indisponibles jusqu'à la
-réussite et à la publication de la nouvelle CI**. Le ZIP Windows et le tar.gz
-macOS gardent leurs noms et seront remplacés à cette publication. Les descriptions
-des nouveaux paquets ci-dessous ne prouvent pas leur validation ni leur disponibilité.
+La version actuellement publiée reste l'ancienne `kapila-burner`, avec trois fichiers
+et des outils d'authoring externes. La première CI native a échoué et le nouveau
+pipeline des utilitaires est encore en test. Les sept nouveaux fichiers
+`kapila-maker` restent **en attente jusqu'à la réussite de la CI et à la confirmation
+de leur publication complète**. Les nouveaux liens peuvent renvoyer une erreur 404
+d'ici là. Les descriptions des nouveaux paquets ci-dessous ne prouvent pas leur
+validation ni leur disponibilité.
 
 Installateurs (publication en attente) :
-[Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-setup.exe)
-| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.dmg)
+[Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-setup.exe)
+| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.dmg)
 
-Alternatives portables (les fichiers publiés sont encore les anciens) :
+Alternatives portables (nouveaux noms, publication en attente) :
 
 | Plateforme | Archive |
 | --- | --- |
-| Linux x86-64 | [kapila-burner-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-linux-amd64.tar.gz) |
-| Windows x86-64 | [kapila-burner-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64.zip) |
-| macOS Intel x86-64 | [kapila-burner-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.tar.gz) |
+| Linux x86-64 | [kapila-maker-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64.tar.gz) |
+| Windows x86-64 | [kapila-maker-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64.zip) |
+| macOS Intel x86-64 | [kapila-maker-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.tar.gz) |
 
 [SHA256SUMS](https://github.com/radomd92/kapila-burner/releases/download/continuous/SHA256SUMS)
 | [Page de la préversion](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
@@ -40,10 +44,10 @@ Chaque exécution réussie suivante actualise cette préversion. Les pull reques
 produisent des artefacts Actions conservés **14 jours**, sans publication de
 release. Les tags `v*` publient des versions distinctes.
 
-Chaque archive contient **`kapila-burner`** (GTK natif) et
-**`kapila-burner-web`** (web portable), avec l'extension `.exe` sous Windows.
+Chaque archive contient **`kapila-maker`** (GTK natif) et
+**`kapila-maker-web`** (web portable), avec l'extension `.exe` sous Windows.
 Extrayez l'archive avant utilisation. Le programme web ne nécessite pas GTK.
-Le nouveau tar.gz macOS contient aussi **`Kapila Burner.app`**, ainsi que les
+Le nouveau tar.gz macOS contient aussi **`kapila-maker.app`**, ainsi que les
 exécutables natif/web de commodité. Les nouveaux paquets Windows/macOS incluent
 GTK, toutes les bibliothèques non système et données nécessaires et les cinq
 outils de création d'images, pour les deux interfaces.
@@ -51,8 +55,8 @@ outils de création d'images, pour les deux interfaces.
 | Plateforme | Exigences de l'interface GTK |
 | --- | --- |
 | Linux | Ubuntu 22.04 ou plus récent, ou distribution compatible, avec GTK 3 système (`libgtk-3-0` sous Ubuntu) et une session graphique. |
-| Windows | Installez l'EXE ou conservez **tout le dossier ZIP extrait** et lancez `kapila-burner.exe` / `launch-gtk.cmd`, pas un `.exe` déplacé seul. Les DLL GTK, bibliothèques et données sont incluses. |
-| macOS | Intel macOS 15 ou plus récent. Ouvrez le DMG et glissez l'application autonome **`Kapila Burner.app`** dans Applications, ou utilisez le tar.gz. GTK, bibliothèques et données sont incluses ; aucun Homebrew requis. |
+| Windows | Installez l'EXE ou conservez **tout le dossier ZIP extrait** et lancez `kapila-maker.exe` / `launch-gtk.cmd`, pas un `.exe` déplacé seul. Les DLL GTK, bibliothèques et données sont incluses. |
+| macOS | Intel macOS 15 ou plus récent. Ouvrez le DMG et glissez l'application autonome **`kapila-maker.app`** dans Applications, ou utilisez le tar.gz. GTK, bibliothèques et données sont incluses ; aucun Homebrew requis. |
 
 Aucun exécutable ARM n'est publié. Sous Linux, GTK système et les outils
 d'authoring externes restent nécessaires. La gravure physique de VCD est réservée
@@ -62,7 +66,7 @@ les images. Ce logiciel n'est **pas requis pour créer les images** ; rien n'est
 gravé automatiquement.
 
 L'installateur Windows s'installe par utilisateur dans
-`%LOCALAPPDATA%\Programs\KapilaBurner`, sans droits administrateur, avec raccourcis
+`%LOCALAPPDATA%\Programs\kapila-maker`, sans droits administrateur, avec raccourcis
 et désinstalleur. Il est **non signé** : Windows/SmartScreen peut afficher un
 avertissement ; aucun certificat de signature de code n'est revendiqué.
 L'application macOS porte une **signature ad hoc, sans signature Developer ID ni
@@ -81,39 +85,39 @@ Téléchargez `SHA256SUMS` pour vérifier l'intégrité des archives. Sous Linux
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
-Sous macOS, comparez `shasum -a 256 kapila-burner-macos-amd64.tar.gz` à la valeur
+Sous macOS, comparez `shasum -a 256 kapila-maker-macos-amd64.tar.gz` à la valeur
 publiée. Sous PowerShell, utilisez
-`Get-FileHash .\kapila-burner-windows-amd64.zip -Algorithm SHA256`.
+`Get-FileHash .\kapila-maker-windows-amd64.zip -Algorithm SHA256`.
 Ces sommes de contrôle **ne sont pas des signatures cryptographiques**.
 
 ## Démarrer
 
 Sous Windows, utilisez le raccourci installé ; sous macOS, ouvrez
-`Kapila Burner.app` dans Applications. Aucun terminal n'est nécessaire pour ces
+`kapila-maker.app` dans Applications. Aucun terminal n'est nécessaire pour ces
 lancements graphiques. En option, depuis le dossier extrait sous Linux ou macOS :
 
 ```sh
-./kapila-burner -root /path/to/media
+./kapila-maker -root /path/to/media
 # Démarrer directement en français :
-./kapila-burner -root /path/to/media -lang fr
+./kapila-maker -root /path/to/media -lang fr
 # Ou en anglais :
-./kapila-burner -root /path/to/media -lang en
+./kapila-maker -root /path/to/media -lang en
 # Autre interface : navigateur local
-./kapila-burner-web -root /path/to/media
+./kapila-maker-web -root /path/to/media
 ```
 
-Avec le ZIP portable Windows, ouvrez `kapila-burner.exe` / `launch-gtk.cmd`, ou
+Avec le ZIP portable Windows, ouvrez `kapila-maker.exe` / `launch-gtk.cmd`, ou
 lancez depuis PowerShell :
 
 ```powershell
 .\launch-gtk.cmd -root C:\Music -lang fr
 # Interface web :
-.\kapila-burner-web.exe -root C:\Music
+.\kapila-maker-web.exe -root C:\Music
 ```
 
 Les nouveaux paquets Windows/macOS trouvent les outils relativement à l'exécutable,
 depuis **n'importe quel répertoire de travail**. Par défaut, les médias viennent du
-dossier Music de l'utilisateur et les sorties vont dans `Kapila Burner/output`
+dossier Music de l'utilisateur et les sorties vont dans `kapila-maker/output`
 sous son cache utilisateur. `-root` et `-output` remplacent ces valeurs.
 Les compilations source et Linux conservent les anciens défauts relatifs au
 répertoire courant : médias dans `..`, sorties dans `./output` et recherche locale
@@ -179,9 +183,9 @@ facultatifs et leurs limites de portabilité.
 ### Sources Et Licences
 
 Les archives correspondantes
-[`kapila-burner-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-sources.tar.gz)
+[`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 et
-[`kapila-burner-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64-sources.tar.gz)
+[`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
 seront publiées avec les nouveaux paquets ; elles sont aussi en attente.
 **Elles ne sont pas nécessaires pour exécuter l'application.** Elles contiennent
 les archives sources exactes des formules du runtime macOS, toutes les sources
@@ -249,7 +253,7 @@ ont leur propre dossier `output/burn-*/`. Les échecs et annulations conservent
 les fichiers partiels ; il n'y a pas de nettoyage automatique. `job.json` est
 écrit à la fin, avec un journal limité aux 600 dernières lignes.
 Ces chemins sont relatifs à la racine de sortie choisie : par défaut, cache
-utilisateur `Kapila Burner/output` pour les nouveaux paquets Windows/macOS,
+utilisateur `kapila-maker/output` pour les nouveaux paquets Windows/macOS,
 `./output` pour les compilations source/Linux.
 
 Pour un DVD ISO, prévoyez environ **trois fois la taille du PCM**, plus une
@@ -278,8 +282,8 @@ Go 1.22 ou plus récent est nécessaire ; la CI utilise Go 1.24. Depuis les sour
 ```sh
 git clone https://github.com/radomd92/kapila-burner.git
 cd kapila-burner
-make web                 # produit dvd-audio-studio
-make gtk                 # produit dvd-audio-gtk ; en-têtes GTK et compilateur C requis
+make web                 # produit kapila-maker-web
+make gtk                 # produit kapila-maker ; en-têtes GTK et compilateur C requis
 make test
 make test-gtk
 make smoke-gtk           # en, plt, fr ; affichage ou Xvfb nécessaire
@@ -288,9 +292,9 @@ VCD_INTEGRATION=1 make test
 DVDA_INTEGRATION=1 VCD_INTEGRATION=1 go test -race ./...
 ```
 
-Le nom source `cmd/dvd-audio-gtk` et le nom du binaire local `dvd-audio-gtk`
-restent inchangés ; les archives publiques utilisent la marque **Kapila Burner**
-et le nom `kapila-burner`. Un [overlay GTK de développement](tools/gtk-dev/README.md)
+Le code GTK se trouve dans `cmd/kapila-maker` ; les binaires locaux et publics
+s'appellent `kapila-maker` et `kapila-maker-web`.
+Un [overlay GTK de développement](tools/gtk-dev/README.md)
 est documenté pour certains hôtes Linux. `make package` crée les archives sur
 le système cible avec ses dépendances de développement GTK.
 

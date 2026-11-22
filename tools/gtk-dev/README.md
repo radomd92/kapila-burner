@@ -1,4 +1,6 @@
-# Local GTK 3 Development Prerequisites
+# kapila-maker
+
+Local GTK 3 development prerequisites.
 
 Provisioned on Linux Mint 22.1, Ubuntu noble base, amd64, using Go 1.22.2.
 Nothing was installed into the system and no sudo was used. All project
@@ -9,7 +11,7 @@ SDK: installed runtime libraries and installed development packages are reused.
 
 This overlay is for local source builds, not public runtime installation.
 `make smoke-gtk` checks English, Plateau Malagasy, and French. A local
-`dvd-audio-gtk` build (named `kapila-burner` in release archives) needs
+`kapila-maker` build (the same name in release archives) needs
 the native runtime libraries and a display, not these development headers.
 Run it from the application directory; it calls the shared core
 directly and requires no HTTP server or browser.
@@ -110,10 +112,10 @@ cd /path/to/kapila-burner
 make gtk
 make test-gtk
 make smoke-gtk
-./dvd-audio-gtk -root /path/to/media
+./kapila-maker -root /path/to/media
 # Or choose another startup language:
-./dvd-audio-gtk -root /path/to/media -lang en
-./dvd-audio-gtk -root /path/to/media -lang fr
+./kapila-maker -root /path/to/media -lang en
+./kapila-maker -root /path/to/media -lang fr
 ```
 
 The local Linux application build has been verified; hosted platform results

@@ -1,21 +1,21 @@
-Kapila Burner
+kapila-maker
 https://github.com/radomd92/kapila-burner
 
 Every platform archive contains both interfaces:
-  kapila-burner[.exe]       GTK desktop application
-  kapila-burner-web[.exe]   Local web server with embedded browser interface
+  kapila-maker[.exe]       GTK desktop application
+  kapila-maker-web[.exe]   Local web server with embedded browser interface
 
 Malagasy is the default. Switch with the language selector or -lang en / -lang fr.
 
 Windows x86-64:
-- Install using kapila-burner-windows-amd64-setup.exe (per-user, no admin needed),
-  or extract the entire ZIP and run kapila-burner.exe / launch-gtk.cmd.
+- Install using kapila-maker-windows-amd64-setup.exe (per-user, no admin needed),
+  or extract the entire ZIP and run kapila-maker.exe / launch-gtk.cmd.
 - GTK, all required DLLs/data, FFmpeg, FFprobe, VCDImager, dvda-author and genuine
   DVD-Audio mkisofs are included. No MSYS2, Go, or separate utility installs needed.
 - Do not move a single EXE away from its bundled runtime directory.
 
 macOS 15 or newer, Intel x86-64:
-- Open the DMG and copy Kapila Burner.app to Applications, or extract the archive.
+- Open the DMG and copy kapila-maker.app to Applications, or extract the archive.
 - GTK and all five authoring utilities and their non-system libraries are included.
   No Homebrew, Go, FFmpeg installation or PATH setup is required on the user's Mac.
 - The app is ad-hoc signed, NOT Developer ID signed or notarized. Follow normal
@@ -27,10 +27,10 @@ Linux x86-64:
   See the repository's dependency instructions. This change bundles Windows/macOS.
 
 Bundled Windows/macOS apps find tools relative to their executable, not the working
-directory. Defaults: user Music library and a writable per-user cache output folder.
+directory. Defaults: user Music library and kapila-maker/output in the per-user cache.
 Pass -root /path/to/media and -output /path/to/output to override them.
 
-For the web interface, run kapila-burner-web[.exe] -root /path/to/media, then open
+For the web interface, run kapila-maker-web[.exe] -root /path/to/media, then open
 the loopback URL printed in the terminal, normally http://127.0.0.1:8787.
 Keep the terminal open. Do not expose the service to a network.
 

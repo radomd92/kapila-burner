@@ -1,4 +1,6 @@
-# Local DVD-Audio Tools
+# kapila-maker
+
+Local DVD-Audio tools for Linux development.
 
 Use `bin/dvda-author` and `bin/mkisofs`, not the package's hard-coded
 `opt/dvda-author/dvda-author-dev` launcher. No system installation is needed.

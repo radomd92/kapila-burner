@@ -16,8 +16,8 @@ import sys
 from bundle import SYSTEM, images, inside, metadata, run
 
 
-APP_NAME = "Kapila Burner.app"
-EXECUTABLES = ("kapila-burner", "kapila-burner-web")
+APP_NAME = "kapila-maker.app"
+EXECUTABLES = ("kapila-maker", "kapila-maker-web")
 HELPERS = ("ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager",
            "gdk-pixbuf-query-loaders", "gtk-query-immodules-3.0")
 
@@ -106,7 +106,7 @@ def make_app(stage, plist):
     with plist.open("rb") as stream:
         info = plistlib.load(stream)
     if info.get("CFBundleExecutable") != EXECUTABLES[0] or info.get("CFBundlePackageType") != "APPL":
-        raise RuntimeError("Info.plist must declare the native kapila-burner APPL executable")
+        raise RuntimeError("Info.plist must declare the native kapila-maker APPL executable")
     plan, edits = snapshot(stage, contents)
 
     for directory in ("MacOS", "Helpers", "Frameworks", "Resources"):
@@ -144,7 +144,7 @@ def make_app(stage, plist):
     launcher.write_text('''#!/bin/bash
 set -euo pipefail
 directory=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$directory/Kapila Burner.app/Contents/MacOS/kapila-burner" "$@"
+exec "$directory/kapila-maker.app/Contents/MacOS/kapila-maker" "$@"
 ''')
     launcher.chmod(0o755)
     return app

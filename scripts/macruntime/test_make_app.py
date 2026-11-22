@@ -18,7 +18,7 @@ class AppTests(unittest.TestCase):
         self.stage.mkdir()
         self.contents = self.stage / make_app.APP_NAME / "Contents"
         self.plist = self.root / "Info.plist"
-        self.plist.write_bytes(plistlib.dumps({"CFBundleExecutable": "kapila-burner",
+        self.plist.write_bytes(plistlib.dumps({"CFBundleExecutable": "kapila-maker",
                                               "CFBundlePackageType": "APPL"}))
         self.meta = {}
         for name in make_app.EXECUTABLES:
@@ -52,8 +52,8 @@ class AppTests(unittest.TestCase):
 
     def test_destination_mapping(self):
         cases = {
-            "kapila-burner": "MacOS/kapila-burner",
-            "kapila-burner-web": "MacOS/kapila-burner-web",
+            "kapila-maker": "MacOS/kapila-maker",
+            "kapila-maker-web": "MacOS/kapila-maker-web",
             "tools/bin/ffmpeg": "Helpers/ffmpeg",
             "lib/libgtk-3.0.dylib": "Frameworks/libgtk-3.0.dylib",
             "lib/gdk-pixbuf-2.0/2.10.0/loaders/svg.so":
@@ -79,7 +79,7 @@ class AppTests(unittest.TestCase):
         self.image("lib/libsecond.dylib", identity="@rpath/libsecond.dylib")
         module = self.image("lib/gdk-pixbuf-2.0/2.10.0/loaders/svg.so",
                             ["@loader_path/../../../libfirst.dylib"])
-        self.meta[self.stage / "kapila-burner"] = (["@loader_path/lib/libfirst.dylib"], [], None)
+        self.meta[self.stage / "kapila-maker"] = (["@loader_path/lib/libfirst.dylib"], [], None)
         self.meta[self.stage / "tools/bin/ffmpeg"] = (
             ["@loader_path/../../lib/libfirst.dylib"], ["/old/Homebrew/lib"], None)
         events = []
@@ -117,11 +117,11 @@ class AppTests(unittest.TestCase):
         for name in make_app.EXECUTABLES:
             self.assertEqual((self.stage / name).resolve(), self.contents / "MacOS" / name)
         launcher = (self.stage / "launch-gtk.command").read_text()
-        self.assertIn('exec "$directory/Kapila Burner.app/Contents/MacOS/kapila-burner" "$@"', launcher)
+        self.assertIn('exec "$directory/kapila-maker.app/Contents/MacOS/kapila-maker" "$@"', launcher)
         self.assertNotIn("FONTCONFIG", launcher)
 
         patches = [event for event in events if event[0] == "install_name_tool"]
-        for target in (self.contents / "MacOS/kapila-burner", self.contents / "Helpers/ffmpeg"):
+        for target in (self.contents / "MacOS/kapila-maker", self.contents / "Helpers/ffmpeg"):
             command = next(event for event in patches if event[-1] == target)
             self.assertIn("@loader_path/../Frameworks/libfirst.dylib", command)
         helper = next(event for event in patches if event[-1] == self.contents / "Helpers/ffmpeg")
@@ -149,11 +149,11 @@ class AppTests(unittest.TestCase):
         for dep in ("@loader_path/lib/missing.dylib", "/usr/local/opt/gtk/libgtk.dylib",
                     "@rpath/libgtk.dylib", "@loader_path/../outside.dylib"):
             with self.subTest(dep=dep), patch.object(make_app, "metadata", side_effect=self.meta.__getitem__):
-                self.meta[self.stage / "kapila-burner"] = ([dep], [], None)
+                self.meta[self.stage / "kapila-maker"] = ([dep], [], None)
                 with self.assertRaises(RuntimeError):
                     make_app.make_app(self.stage, self.plist)
                 self.assertFalse(self.contents.exists())
-                self.assertTrue((self.stage / "kapila-burner").is_file())
+                self.assertTrue((self.stage / "kapila-maker").is_file())
 
     def test_code_in_resources_is_rejected(self):
         self.image("share/hidden-code.dylib")

@@ -1,8 +1,10 @@
-# Kapila Burner
+# kapila-maker
 
 **Malagasy (Plateau)** | [English](README.en.md) | [Français](README.fr.md)
 
 [![CI](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml/badge.svg)](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
+
+`kapila-maker` no anaran'ny rindranasa; mitazona ny anarana `kapila-burner` ny tahiry GitHub.
 
 Fitaovana eo an-toerana hanamboarana **DVD-Audio LPCM** sy **Video CD 2.0**.
 Misafidiana ny rindranasa GTK na ny fampiasana amin'ny mpitety tranonkala.
@@ -14,23 +16,24 @@ Havaozina rehefa mahomby ny CI eo amin'ny sampana fototra ny kinova andrana
 **continuous**.
 
 **Mbola miandry fanamarinana CI ny fonosana vaovao.** Ny kinova efa navoaka
-ankehitriny dia ilay taloha, mbola mila fitaovana fanamboarana kapila ivelany.
-**Tsy mbola azo alaina amin'ireto rohy installer vaovao ireto raha tsy mahomby
-sy mamoaka azy ny CI vaovao.** Tsy miova ny anaran'ny ZIP Windows sy tar.gz macOS,
-fa hosoloina amin'izay famoahana izay ny ao anatiny. Momba ny fonosana vaovao
+ankehitriny dia ilay `kapila-burner` taloha misy rakitra telo, mbola mila fitaovana
+fanamboarana kapila ivelany. Tsy nahomby ny CI native voalohany ary mbola andramana
+ny pipeline vaovao ho an'ny utilities. **Mbola miandry ireo rakitra vaovao fito
+`kapila-maker` mandra-pahombiazan'ny CI sy fanamafisana fa efa navoaka izy fito.**
+Mety hamerina 404 ireo rohy vaovao mandra-pahatongan'izany. Momba ny fonosana vaovao
 ny fanazavana Windows/macOS eto ambany, fa tsy porofo fa efa voamarina na navoaka.
 
 Installer (mbola miandry famoahana):
-[Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-setup.exe)
-| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.dmg)
+[Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-setup.exe)
+| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.dmg)
 
-Arisiva portable hafa (mbola ilay kinova taloha ny rakitra efa navoaka):
+Arisiva portable hafa (anarana vaovao, mbola miandry famoahana):
 
 | Rafitra | Rakitra alaina |
 | --- | --- |
-| Linux x86-64 | [kapila-burner-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-linux-amd64.tar.gz) |
-| Windows x86-64 | [kapila-burner-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64.zip) |
-| macOS Intel x86-64 | [kapila-burner-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.tar.gz) |
+| Linux x86-64 | [kapila-maker-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64.tar.gz) |
+| Windows x86-64 | [kapila-maker-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64.zip) |
+| macOS Intel x86-64 | [kapila-maker-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.tar.gz) |
 
 [SHA256SUMS](https://github.com/radomd92/kapila-burner/releases/download/continuous/SHA256SUMS)
 | [Pejin'ny kinova](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
@@ -42,10 +45,10 @@ tehirizina **14 andro**, fa tsy mamoaka kinova ho an'ny daholobe.
 Tsy midika ho fahombiazan'ny fanamboarana rehetra ny fisian'ireo rohy ireo;
 jereo ny satan'ny Actions.
 
-Ao anatin'ny arisiva tsirairay ny **`kapila-burner`** (GTK) sy
-**`kapila-burner-web`** (web); misy tovana `.exe` amin'ny Windows.
+Ao anatin'ny arisiva tsirairay ny **`kapila-maker`** (GTK) sy
+**`kapila-maker-web`** (web); misy tovana `.exe` amin'ny Windows.
 Vahao aloha ny arisiva. Tsy mila GTK ny kinova web.
-Ny tar.gz macOS vaovao dia misy **`Kapila Burner.app`** sy ireo executable
+Ny tar.gz macOS vaovao dia misy **`kapila-maker.app`** sy ireo executable
 GTK/web ho fanamorana ny fampiasana. Ao amin'ny fonosana Windows/macOS vaovao
 ny GTK, ny libraries tsy avy amin'ny rafitra sy angon-drakitra rehetra ilaina,
 ary ny fitaovana dimy fanamboarana image ho an'ny interface roa.
@@ -53,8 +56,8 @@ ary ny fitaovana dimy fanamboarana image ho an'ny interface roa.
 | Rafitra | Zavatra ilaina amin'ny GTK |
 | --- | --- |
 | Linux | Ubuntu 22.04 na vao haingana kokoa, na rafitra mifanaraka aminy; GTK 3 avy amin'ny rafitra (`libgtk-3-0` amin'ny Ubuntu) sy tontolo an-tsary. |
-| Windows | Ampiasao ny installer EXE, na tazomy ny **lahatahiry ZIP voavaha manontolo** ary alefaso ny `kapila-burner.exe` / `launch-gtk.cmd`. Ao ny GTK DLL, libraries sy angon-drakitra ilaina; aza afindra irery ny `.exe`. |
-| macOS | Intel macOS 15 na vao haingana kokoa. Sokafy ny DMG ary tariho ao amin'ny Applications ny **`Kapila Burner.app`** mahaleo tena, na ampiasao ny tar.gz. Ao ny GTK, libraries sy angon-drakitra ilaina; tsy mila Homebrew. |
+| Windows | Ampiasao ny installer EXE, na tazomy ny **lahatahiry ZIP voavaha manontolo** ary alefaso ny `kapila-maker.exe` / `launch-gtk.cmd`. Ao ny GTK DLL, libraries sy angon-drakitra ilaina; aza afindra irery ny `.exe`. |
+| macOS | Intel macOS 15 na vao haingana kokoa. Sokafy ny DMG ary tariho ao amin'ny Applications ny **`kapila-maker.app`** mahaleo tena, na ampiasao ny tar.gz. Ao ny GTK, libraries sy angon-drakitra ilaina; tsy mila Homebrew. |
 
 Tsy misy kinova ARM avoaka. Amin'ny Linux ihany no mbola ilaina ny GTK avy
 amin'ny rafitra sy ny fitaovana fanamboarana kapila apetraka misaraka.
@@ -64,7 +67,7 @@ Tsy tohanana ny fandoroana amin'ny Windows/macOS: mampiasà rindranasa fandoroan
 ivelany ho an'ny ISO na BIN/CUE. **Tsy ilaina izany mba hamoronana image**, ary
 tsy misy fandoroana mandeha ho azy.
 
-Ao amin'ny `%LOCALAPPDATA%\Programs\KapilaBurner` ho an'ilay mpampiasa ny
+Ao amin'ny `%LOCALAPPDATA%\Programs\kapila-maker` ho an'ilay mpampiasa ny
 installer Windows, tsy mila admin, ary misy shortcuts sy uninstaller.
 **Tsy misy sonia** izy: mety haneho fampitandremana ny Windows/SmartScreen;
 tsy lazaina ho manana code-signing certificate. Ny macOS app dia manana
@@ -82,32 +85,32 @@ fa **tsy sonia kriptografika**. Jereo ny [torolalana fanamarinana](README.en.md#
 ## Fanombohana
 
 Amin'ny Windows, ampiasao ny shortcut napetraka; amin'ny macOS, sokafy ny
-`Kapila Burner.app` ao amin'ny Applications. Tsy mila terminal ireo fomba GTK
+`kapila-maker.app` ao amin'ny Applications. Tsy mila terminal ireo fomba GTK
 ireo. Raha mampiasa baiko kosa, ao amin'ilay lahatahiry voavaha, Linux na macOS:
 
 ```sh
-./kapila-burner -root /path/to/media
+./kapila-maker -root /path/to/media
 # Raha tiana ny teny anglisy na frantsay:
-./kapila-burner -root /path/to/media -lang en
-./kapila-burner -root /path/to/media -lang fr
+./kapila-maker -root /path/to/media -lang en
+./kapila-maker -root /path/to/media -lang fr
 # Na ampiasao ny mpitety tranonkala:
-./kapila-burner-web -root /path/to/media
+./kapila-maker-web -root /path/to/media
 ```
 
-Amin'ny ZIP portable Windows, sokafy ny `kapila-burner.exe` / `launch-gtk.cmd`,
+Amin'ny ZIP portable Windows, sokafy ny `kapila-maker.exe` / `launch-gtk.cmd`,
 na alefaso ao amin'ny PowerShell:
 
 ```powershell
 .\launch-gtk.cmd -root C:\Music
 # Ho an'ny web:
-.\kapila-burner-web.exe -root C:\Music
+.\kapila-maker-web.exe -root C:\Music
 ```
 
 Soloy amin'ny toerana misy ny haino aman-jerinao ny `-root`.
 Ny fonosana Windows/macOS vaovao dia mitady fitaovana mifototra amin'ny toerana
 misy ny executable, ka mandeha avy amin'ny **lahatahiry iasana rehetra**.
 Ny Music an'ny mpampiasa no tahiry media fanombohana; ao amin'ny cache an'ilay
-mpampiasa, `Kapila Burner/output`, ny vokatra. Manolo ireo ny `-root` sy `-output`
+mpampiasa, `kapila-maker/output`, ny vokatra. Manolo ireo ny `-root` sy `-output`
 raha voafaritra. Tsy miova ny source/Linux: `..` ho an'ny media, `./output`
 ho an'ny vokatra, ary fikarohana fitaovana eo an-toerana araka ny lahatahiry iasana.
 Amin'ny web, sokafy ilay URL aseho, matetika
@@ -149,9 +152,9 @@ fikarohana `./tools/bin/` sy `PATH` teo aloha.
 ### Source Sy Fahazoan-dalana
 
 Havoaka miaraka amin'ny vaovao ny
-[`kapila-burner-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-sources.tar.gz)
+[`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 sy
-[`kapila-burner-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64-sources.tar.gz),
+[`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz),
 mbola miandry famoahana koa. **Tsy mila ireo source ireo hampandehanana ny app.**
 Ao ny arisiva source marina an'ireo formula runtime macOS, ny source rehetra
 an'ireo package MSYS2 mifanaraka aminy, ny source utility tany am-boalohany,
@@ -196,7 +199,7 @@ Tsy backup an'ireo haino aman-jery ny JSON: mbola ilaina eo amin'ny lalany ny lo
 Tsy ovaina ny loharano. Ao amin'ny `output/disc-*/` ny vokatra sy `project.json`,
 `job.json` ary ny logs; ao amin'ny `output/burn-*/` ny asam-pandoroana.
 Miankina amin'ny output root voafidy ireo lalana ireo: cache an'ny mpampiasa
-`Kapila Burner/output` amin'ny fonosana Windows/macOS vaovao, `./output` amin'ny
+`kapila-maker/output` amin'ny fonosana Windows/macOS vaovao, `./output` amin'ny
 source/Linux raha tsy novaina tamin'ny flags.
 Tazonina ny vokatra tsy feno, tsy misy fanadiovana mandeha ho azy na fitohizan'ny
 asa aorian'ny restart. Ho an'ny DVD ISO, manomana toerana avo telo henin'ny PCM,
@@ -209,8 +212,8 @@ Ny [README anglisy](README.en.md) no torolalana teknika feno. Mila Go 1.22 na
 vaovao kokoa ny source; Go 1.24 no ampiasain'ny CI. Avy ao amin'ny tahiry nakarina:
 
 ```sh
-make web                 # dvd-audio-studio
-make gtk                 # dvd-audio-gtk, mila GTK development files
+make web                 # kapila-maker-web
+make gtk                 # kapila-maker, mila GTK development files
 make test
 make test-gtk
 make smoke-gtk           # en, plt, fr; mila display na Xvfb
@@ -219,8 +222,8 @@ VCD_INTEGRATION=1 make test
 DVDA_INTEGRATION=1 VCD_INTEGRATION=1 go test -race ./...
 ```
 
-`cmd/dvd-audio-gtk` sy `dvd-audio-gtk` no anaran'ny source sy build eo an-toerana;
-**Kapila Burner** / `kapila-burner` no marika sy anaran'ny executable avoaka.
+`cmd/kapila-maker` no lalana source GTK; `kapila-maker` sy `kapila-maker-web`
+no anaran'ny executable eo an-toerana sy ao amin'ny fonosana avoaka.
 Ao amin'ny [tools/gtk-dev](tools/gtk-dev/README.md) ny overlay GTK ho an'ny
 fampandrosoana amin'ny Linux sasany.
 

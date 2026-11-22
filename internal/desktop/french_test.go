@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +65,16 @@ func TestFrenchCatalog(t *testing.T) {
 	}
 	if got := errorText("fr", errors.New("empty track path")); got != "Chemin de piste vide" {
 		t.Fatal(got)
+	}
+}
+
+func TestApplicationBrand(t *testing.T) {
+	for _, lang := range []string{"en", "fr", "plt"} {
+		if got := translate(lang, "kapila-maker", "kapila-maker"); got != "kapila-maker" {
+			t.Errorf("%s application name = %q", lang, got)
+		}
+		if got := translate(lang, "About kapila-maker", "Momba ny kapila-maker"); !strings.HasSuffix(got, "kapila-maker") {
+			t.Errorf("%s About label = %q", lang, got)
+		}
 	}
 }

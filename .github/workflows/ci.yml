@@ -31,6 +31,7 @@ jobs:
             runner: macos-15-intel
     env:
       CGO_CFLAGS: -O0 -g0 -Wno-deprecated-declarations
+      UTILITY_BUILD_ROOT: ${{ runner.temp }}/kapila-utilities
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -90,6 +91,17 @@ jobs:
         run: |
           xvfb-run -a make test-gtk
           xvfb-run -a make smoke-gtk
+      - name: Restore native utility downloads and verified payloads
+        if: runner.os != 'Linux'
+        id: utilities
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/kapila-utilities/downloads
+            ${{ runner.temp }}/kapila-utilities/recipe-*/payload
+          key: utilities-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-utilities.sh', 'scripts/utility-sources.tsv', 'scripts/patches/**') }}
+          restore-keys: |
+            utilities-${{ runner.os }}-${{ runner.arch }}-
       - name: Package Linux and macOS executables
         if: runner.os != 'Windows'
         env:
@@ -101,15 +113,23 @@ jobs:
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
         run: make package
+      - name: Save native utility downloads and verified payloads
+        if: always() && runner.os != 'Linux' && steps.utilities.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/kapila-utilities/downloads
+            ${{ runner.temp }}/kapila-utilities/recipe-*/payload
+          key: ${{ steps.utilities.outputs.cache-primary-key }}
       - name: Upload executable archive
         uses: actions/upload-artifact@v4
         with:
-          name: kapila-burner-${{ matrix.platform }}
+          name: kapila-maker-${{ matrix.platform }}
           path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/*.exe
-            dist/*.dmg
+            dist/kapila-maker-*.tar.gz
+            dist/kapila-maker-*.zip
+            dist/kapila-maker-*.exe
+            dist/kapila-maker-*.dmg
           if-no-files-found: error
           retention-days: 14
 
@@ -127,7 +147,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: kapila-burner-*
+          pattern: kapila-maker-*
           merge-multiple: true
           path: dist
       - name: Publish versioned or rolling release with checksums

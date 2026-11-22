@@ -8,7 +8,7 @@ destination=$(cd "$destination" && pwd)
 prefix=/mingw64
 export LC_ALL=C
 export PATH="$prefix/bin:/usr/bin:$PATH"
-for executable in kapila-burner.exe kapila-burner-web.exe tools/bin/{ffmpeg,ffprobe,dvda-author,mkisofs,vcdimager}.exe; do
+for executable in kapila-maker.exe kapila-maker-web.exe tools/bin/{ffmpeg,ffprobe,dvda-author,mkisofs,vcdimager}.exe; do
   [[ -f $destination/$executable ]] || { printf 'Missing staged executable: %s\n' "$executable" >&2; exit 1; }
 done
 declare -A packages=() scanned=() dll_hashes=() dll_names=() copied=()
@@ -217,8 +217,8 @@ if ((${#immodules[@]})); then
     fi
   done <<< "$imcache"
 fi
-"$destination/kapila-burner.exe" -h
-"$destination/kapila-burner-web.exe" -h
+"$destination/kapila-maker.exe" -h
+"$destination/kapila-maker-web.exe" -h
 "$destination/tools/bin/ffmpeg.exe" -version
 "$destination/tools/bin/ffprobe.exe" -version
 "$destination/tools/bin/dvda-author.exe" -h

@@ -305,7 +305,7 @@ class Bundler:
             "source, including build scripts and patches, as required by their respective licenses.\n")
 
     def build(self):
-        required = ["kapila-burner", "kapila-burner-web"]
+        required = ["kapila-maker", "kapila-maker-web"]
         required += ["tools/bin/" + name for name in
                      ("ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager")]
         for name in required:
@@ -319,7 +319,7 @@ class Bundler:
         # sources, whereas copied libraries retain their original keg source.
         for source in self.sources.values():
             self.getinfo(source)
-        gui_source = self.sources[self.stage / "kapila-burner"]
+        gui_source = self.sources[self.stage / "kapila-maker"]
         gui_rpaths = tuple(self.expand(r, gui_source, gui_source)
                            for r in self.getinfo(gui_source)[1])
         for root in roots:

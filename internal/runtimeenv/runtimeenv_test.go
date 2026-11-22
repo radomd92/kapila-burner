@@ -14,7 +14,7 @@ import (
 
 func TestBundleRoot(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "kapila-burner")
+	exe := filepath.Join(root, "kapila-maker")
 	if got := bundleRoot(exe); got != "" {
 		t.Fatalf("nonbundle root = %q", got)
 	}
@@ -63,7 +63,7 @@ func testConfigure(t *testing.T, app bool) {
 	root := t.TempDir()
 	resources, libraries, tools := root, filepath.Join(root, "lib"), filepath.Join(root, "tools", "bin")
 	if app {
-		root = filepath.Join(root, "Kapila Burner.app", "Contents")
+		root = filepath.Join(root, "kapila-maker.app", "Contents")
 		resources, libraries, tools = filepath.Join(root, "Resources"), filepath.Join(root, "Frameworks"), filepath.Join(root, "Helpers")
 	}
 	modules := filepath.Join(libraries, "gdk-pixbuf-2.0", "2.10.0", "loaders")
@@ -150,7 +150,7 @@ func TestDefaultPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantRoot := filepath.Join(home, "Music")
-	wantOutput := filepath.Join(cache, "Kapila Burner", "output")
+	wantOutput := filepath.Join(cache, "kapila-maker", "output")
 	for _, cwd := range []string{filepath.Join(home, "Applications"), filepath.Join(home, "unrelated", "working-directory")} {
 		root, output, err := defaultPaths(cwd, true)
 		if err != nil || root != wantRoot || output != wantOutput {

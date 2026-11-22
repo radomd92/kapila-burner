@@ -20,8 +20,8 @@ unset FONTCONFIG_SYSROOT
 export GTK_PATH="$bundle/lib/gtk-3.0"
 export GIO_MODULE_DIR="$bundle/lib/gio/modules"
 cache_base=${XDG_CACHE_HOME:-"$HOME/Library/Caches"}
-mkdir -p "$cache_base/Kapila Burner"
-cache=$(mktemp -d "$cache_base/Kapila Burner/runtime.XXXXXXXX")
+mkdir -p "$cache_base/kapila-maker"
+cache=$(mktemp -d "$cache_base/kapila-maker/runtime.XXXXXXXX")
 trap 'rm -rf -- "$cache"' EXIT
 export GDK_PIXBUF_MODULE_FILE="$cache/loaders.cache"
 "$bundle/tools/bin/gdk-pixbuf-query-loaders" > "$GDK_PIXBUF_MODULE_FILE"
@@ -37,9 +37,9 @@ if [[ -x "$bundle/tools/bin/gtk-query-immodules-3.0" ]]; then
   shopt -u nullglob
 fi
 export XDG_CACHE_HOME="$cache_base"
-output="$HOME/Library/Application Support/Kapila Burner/output"
+output="$cache_base/kapila-maker/output"
 mkdir -p "$output"
 # The application locates its utilities relative to its working directory.
 cd -- "$bundle"
 # User-supplied flags come last, so explicit -root and -output override defaults.
-"$bundle/kapila-burner" -root "$HOME/Music" -output "$output" "$@"
+"$bundle/kapila-maker" -root "$HOME/Music" -output "$output" "$@"

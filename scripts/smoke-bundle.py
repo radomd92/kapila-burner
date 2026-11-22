@@ -33,7 +33,7 @@ def main():
                         "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-ac", "2",
                         "-ar", "44100", "-c:a", "pcm_s16le", str(media / "sample.wav")],
                        cwd=work, env=env, check=True, timeout=60)
-        server = subprocess.Popen([str(executables / ("kapila-burner-web" + suffix)), "-root", str(media),
+        server = subprocess.Popen([str(executables / ("kapila-maker-web" + suffix)), "-root", str(media),
                                    "-output", str(output), "-listen", "127.0.0.1:0"],
                                   cwd=work, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                   text=True, errors="replace")
@@ -113,7 +113,7 @@ def main():
                 server.kill()
                 server.wait()
         for language in ("plt", "en", "fr"):
-            subprocess.run([str(executables / ("kapila-burner" + suffix)), "-root", str(media),
+            subprocess.run([str(executables / ("kapila-maker" + suffix)), "-root", str(media),
                             "-output", str(output), "-lang", language, "-smoke-test"],
                            cwd=work, env=env, check=True, timeout=90)
     print("Relocated GUI and all authoring utilities PASS; no physical burning", flush=True)

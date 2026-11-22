@@ -100,7 +100,7 @@ func defaultPaths(cwd string, bundled bool) (root, output string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("default output directory: %w", err)
 	}
-	return filepath.Join(home, "Music"), filepath.Join(cache, "Kapila Burner", "output"), nil
+	return filepath.Join(home, "Music"), filepath.Join(cache, "kapila-maker", "output"), nil
 }
 
 // PrepareDefaultLibrary runs after parsing flags, never for a custom library.
@@ -227,7 +227,7 @@ func configure(root string, gtk bool) (func(), error) {
 			cleanup()
 			return cleanup, fmt.Errorf("query bundled %s: %w", item.helper, err)
 		}
-		cache, err := os.CreateTemp("", "kapila-gtk-*.cache")
+		cache, err := os.CreateTemp("", "kapila-maker-gtk-*.cache")
 		if err != nil {
 			cleanup()
 			return cleanup, err

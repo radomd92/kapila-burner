@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $stagePath = (Resolve-Path -LiteralPath $Stage).ProviderPath
-foreach ($relative in @('kapila-burner.exe', 'kapila-burner-web.exe',
+foreach ($relative in @('kapila-maker.exe', 'kapila-maker-web.exe',
     'gdk-pixbuf-query-loaders.exe', 'WINDOWS-RUNTIME-PACKAGES.txt',
     'tools\bin\ffmpeg.exe', 'tools\bin\ffprobe.exe', 'tools\bin\dvda-author.exe',
     'tools\bin\mkisofs.exe', 'tools\bin\vcdimager.exe')) {
@@ -37,7 +37,7 @@ if (-not $iscc) {
 
 $null = New-Item -ItemType Directory -Force -Path $OutputDir
 $outputPath = (Resolve-Path -LiteralPath $OutputDir).ProviderPath
-$installer = Join-Path $outputPath 'kapila-burner-windows-amd64-setup.exe'
+$installer = Join-Path $outputPath 'kapila-maker-windows-amd64-setup.exe'
 # An unsuccessful compile must never be mistaken for an older successful build.
 if (Test-Path -LiteralPath $installer) { Remove-Item -LiteralPath $installer }
 & $iscc "/DSourceDir=$stagePath" "/DOutputDir=$outputPath" (Join-Path $PSScriptRoot 'windows-installer.iss')

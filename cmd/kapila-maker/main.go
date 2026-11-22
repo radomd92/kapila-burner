@@ -23,12 +23,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	root := flag.String("root", defaultRoot, "Recursive audio library directory")
-	output := flag.String("output", defaultOutput, "Authoring output directory")
-	lang := flag.String("lang", "plt", "Interface language: plt, en or fr")
-	project := flag.String("project", "", "Open a project JSON file")
-	smoke := flag.Bool("smoke-test", false, "Exercise widgets and exit without authoring")
-	flag.Parse()
+	flags := flag.NewFlagSet("kapila-maker", flag.ExitOnError)
+	root := flags.String("root", defaultRoot, "Recursive audio library directory")
+	output := flags.String("output", defaultOutput, "Authoring output directory")
+	lang := flags.String("lang", "plt", "Interface language: plt, en or fr")
+	project := flags.String("project", "", "Open a project JSON file")
+	smoke := flags.Bool("smoke-test", false, "Exercise widgets and exit without authoring")
+	_ = flags.Parse(os.Args[1:])
 	if *lang != "en" && *lang != "plt" && *lang != "fr" {
 		log.Fatal("-lang must be plt, en or fr")
 	}

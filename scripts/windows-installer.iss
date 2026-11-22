@@ -7,19 +7,19 @@
 
 [Setup]
 AppId={{EF78D7AB-1B46-4B02-9432-14B55AE9B407}
-AppName=Kapila Burner
+AppName=kapila-maker
 AppVersion=1.0
-DefaultDirName={localappdata}\Programs\KapilaBurner
-DefaultGroupName=Kapila Burner
+DefaultDirName={localappdata}\Programs\kapila-maker
+DefaultGroupName=kapila-maker
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
-OutputBaseFilename=kapila-burner-windows-amd64-setup
+OutputBaseFilename=kapila-maker-windows-amd64-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-UninstallDisplayIcon={app}\kapila-burner.exe
+UninstallDisplayIcon={app}\kapila-maker.exe
 DisableProgramGroupPage=yes
 
 [Languages]
@@ -33,7 +33,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "SOURCE-ARCHIVES,SOURCE-ARCHIVES\*,sourcepackages,sourcepackages\*,*.source,*.src.tar.*,*.pkg.tar.*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Kapila Burner"; Filename: "{app}\kapila-burner.exe"; WorkingDir: "{localappdata}"
-Name: "{autodesktop}\Kapila Burner"; Filename: "{app}\kapila-burner.exe"; WorkingDir: "{localappdata}"; Tasks: desktopicon
-Name: "{group}\Kapila Burner (Browser Server)"; Filename: "{app}\kapila-burner-web.exe"; Parameters: "-listen 127.0.0.1:8787"; WorkingDir: "{localappdata}"; Comment: "Keep the console open and open http://127.0.0.1:8787 in your browser."
-Name: "{group}\Uninstall Kapila Burner"; Filename: "{uninstallexe}"
+Name: "{group}\kapila-maker"; Filename: "{app}\kapila-maker.exe"; WorkingDir: "{localappdata}"
+Name: "{autodesktop}\kapila-maker"; Filename: "{app}\kapila-maker.exe"; WorkingDir: "{localappdata}"; Tasks: desktopicon
+Name: "{group}\kapila-maker-web"; Filename: "{app}\kapila-maker-web.exe"; Parameters: "-listen 127.0.0.1:8787"; WorkingDir: "{localappdata}"; Comment: "Keep the console open and open http://127.0.0.1:8787 in your browser."
+Name: "{group}\Uninstall kapila-maker"; Filename: "{uninstallexe}"

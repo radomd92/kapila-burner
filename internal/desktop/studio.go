@@ -128,8 +128,8 @@ func (a *app) construct() {
 	sep(v)
 	item(v, "log", "Show / Hide Job Log", "Asehoy / afeno ny tatitra", "<Primary>l", func() { a.logDock.SetExpanded(!a.logDock.GetExpanded()) })
 	h := menu("Help", "Fanampiana")
-	item(h, "about", "About Disc Studio", "Momba ny Disc Studio", "", func() {
-		d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("Disc Studio\nNative DVD-Audio & Video CD authoring\n\nDVD: lossless PCM for DVD-Audio players.\nVCD: MPEG-1 video + MP2 sound; audio uses a black picture.\nCreate an image first. Burning always requires confirmation.\nSource files are never modified.", "Disc Studio\nFanamboarana DVD-Audio sy Video CD\n\nDVD: PCM tsy very kalitao ho an'ny mpamaky DVD-Audio.\nVCD: MPEG-1 sy MP2; sary mainty ho an'ny feo.\nMamorona sary kapila aloha. Mila fanekena ny fandoroana.\nTsy ovaina ny rakitra niaviany."))
+	item(h, "about", "About kapila-maker", "Momba ny kapila-maker", "", func() {
+		d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("kapila-maker\nNative DVD-Audio & Video CD authoring\n\nDVD: lossless PCM for DVD-Audio players.\nVCD: MPEG-1 video + MP2 sound; audio uses a black picture.\nCreate an image first. Burning always requires confirmation.\nSource files are never modified.", "kapila-maker\nFanamboarana DVD-Audio sy Video CD\n\nDVD: PCM tsy very kalitao ho an'ny mpamaky DVD-Audio.\nVCD: MPEG-1 sy MP2; sary mainty ho an'ny feo.\nMamorona sary kapila aloha. Mila fanekena ny fandoroana.\nTsy ovaina ny rakitra niaviany."))
 		d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
 		d.Run()
 		d.Destroy()
@@ -177,7 +177,7 @@ func (a *app) construct() {
 	a.welcome = box(true, 18)
 	a.welcome.SetBorderWidth(48)
 	style(a.welcome, "welcome")
-	brand := a.label("DISC STUDIO", "DISC STUDIO")
+	brand := a.label("kapila-maker", "kapila-maker")
 	style(brand, "eyebrow")
 	a.welcome.PackStart(brand, false, false, 0)
 	title := a.label("Your music. A disc worth keeping.", "Ny mozikanao. Kapila mendrika hotehirizina.")
@@ -231,7 +231,7 @@ func (a *app) construct() {
 }
 
 func (a *app) updateTitle() {
-	title := a.t("Disc Studio", "Disc Studio")
+	title := a.t("kapila-maker", "kapila-maker")
 	if a.active {
 		title = a.project.Name + " - " + title
 		if a.dirty {

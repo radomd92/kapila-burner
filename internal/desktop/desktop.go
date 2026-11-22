@@ -1091,7 +1091,7 @@ func (a *app) smoke() {
 	if a.project.Groups[0].Tracks[0] != "smoke-b.wav" || a.project.Groups[1].Name != "Smoke group" || a.project.Name != before.Name || a.group != 0 {
 		a.smokeError = fmt.Errorf("GTK smoke state validation failed")
 	}
-	dir, err := os.MkdirTemp("", "disc-studio-smoke-")
+	dir, err := os.MkdirTemp("", "kapila-maker-smoke-")
 	if err != nil {
 		a.smokeError = err
 		a.shutdown()

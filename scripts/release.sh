@@ -6,13 +6,13 @@ cd "$(dirname "$0")/.."
 : "${GITHUB_SHA:?GitHub commit is required}"
 : "${GITHUB_REF:?GitHub ref is required}"
 assets=(
-  kapila-burner-linux-amd64.tar.gz
-  kapila-burner-windows-amd64.zip
-  kapila-burner-macos-amd64.tar.gz
-  kapila-burner-windows-amd64-setup.exe
-  kapila-burner-macos-amd64.dmg
-  kapila-burner-windows-amd64-sources.tar.gz
-  kapila-burner-macos-amd64-sources.tar.gz
+  kapila-maker-linux-amd64.tar.gz
+  kapila-maker-windows-amd64.zip
+  kapila-maker-macos-amd64.tar.gz
+  kapila-maker-windows-amd64-setup.exe
+  kapila-maker-macos-amd64.dmg
+  kapila-maker-windows-amd64-sources.tar.gz
+  kapila-maker-macos-amd64-sources.tar.gz
 )
 for asset in "${assets[@]}"; do
   test -s "dist/$asset"
@@ -21,11 +21,11 @@ done
 
 if [[ $GITHUB_REF == refs/tags/v* ]]; then
   tag=${GITHUB_REF#refs/tags/}
-  title="Kapila Burner $tag"
+  title="kapila-maker $tag"
   prerelease=false
 else
   tag=continuous
-  title='Kapila Burner continuous build'
+  title='kapila-maker continuous build'
   prerelease=true
   # Move the rolling tag as well as its assets so source and binaries agree.
   if gh api "repos/{owner}/{repo}/git/ref/tags/$tag" --silent; then

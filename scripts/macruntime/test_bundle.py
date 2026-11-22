@@ -48,7 +48,7 @@ Load command 2
                               "@rpath/self.dylib"))
 
     def test_recursive_graph_and_nested_module(self):
-        main = self.image(self.stage / "kapila-burner")
+        main = self.image(self.stage / "kapila-maker")
         utility = self.image(self.stage / "tools/bin/ffmpeg")
         module_source = self.image(self.root / "modules/loader.so")
         module = self.stage / "lib/gdk-pixbuf-2.0/2.10.0/loaders/loader.so"

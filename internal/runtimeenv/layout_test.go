@@ -7,8 +7,8 @@ import (
 )
 
 func TestMacAppLayout(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "Kapila Burner.app", "Contents")
-	exe := filepath.Join(root, "MacOS", "kapila-burner")
+	root := filepath.Join(t.TempDir(), "kapila-maker.app", "Contents")
+	exe := filepath.Join(root, "MacOS", "kapila-maker")
 	for _, name := range []string{"MacOS", "Helpers", "Resources", "Frameworks"} {
 		if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
 			t.Fatal(err)
