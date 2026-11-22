@@ -257,10 +257,9 @@ class Bundler:
             self.walk(destination, executable, rpaths)
             relative = os.path.relpath(destination, target.parent)
             changes.extend(("-change", dep, "@loader_path/" + relative))
-        # Never depend on DYLD_* or runtime @rpath resolution. Remove stale
-        # signatures before editing and re-sign every image after all changes.
-        subprocess.run(["codesign", "--remove-signature", str(target)],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Never depend on DYLD_* or runtime @rpath resolution. Keep signatures
+        # during edits: stripping them can damage a bottle's __LINKEDIT layout.
+        # install_name_tool invalidates them; build() re-signs after all edits.
         for rpath in dict.fromkeys(own_rpaths):
             changes.extend(("-delete_rpath", rpath))
         if identity:

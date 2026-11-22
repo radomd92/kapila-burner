@@ -83,6 +83,7 @@ class AppTests(unittest.TestCase):
         self.meta[self.stage / "tools/bin/ffmpeg"] = (
             ["@loader_path/../../lib/libfirst.dylib"], ["/old/Homebrew/lib"], None)
         events = []
+        original_images = {path: path.read_bytes() for path in self.meta}
 
         def metadata(path):
             # Metadata must be read while every original image still exists.
@@ -94,6 +95,11 @@ class AppTests(unittest.TestCase):
         def run(*args):
             self.assertTrue(all((self.contents / make_app.destination(p.relative_to(self.stage))).exists()
                                 for p in self.meta))
+            self.assertNotIn("--remove-signature", args)
+            if args[0] == "install_name_tool":
+                original = next(p for p in self.meta if self.contents /
+                                make_app.destination(p.relative_to(self.stage)) == args[-1])
+                self.assertEqual(args[-1].read_bytes(), original_images[original])
             events.append(args)
             return ""
 

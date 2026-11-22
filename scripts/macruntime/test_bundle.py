@@ -96,6 +96,50 @@ Load command 2
         with self.assertRaisesRegex(RuntimeError, "Cannot resolve"):
             self.builder.resolve("@rpath/missing.dylib", source, executable, [])
 
+    def test_build_edits_signed_images_before_final_signing(self):
+        required = ["kapila-maker", "kapila-maker-web"] + [
+            "tools/bin/" + name for name in
+            ("ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager")]
+        for name in required:
+            binary = self.image(self.stage / name, b"signed executable")
+            self.builder.info[binary] = ([], [], None)
+        main = self.stage / "kapila-maker"
+        glib = self.image(self.cellar / "glib/2/lib/libglib-2.0.0.dylib",
+                          b"signed bottle with intact LINKEDIT")
+        original = glib.read_bytes()
+        self.builder.info[main] = ([str(glib)], [], None)
+        self.builder.info[glib] = ([], [], str(glib))
+        events = []
+
+        def run(*args):
+            self.assertNotIn("--remove-signature", args)
+            if args[0] == "install_name_tool" and args[-1].name == glib.name:
+                self.assertEqual(args[-1].read_bytes(), original)
+                self.assertEqual(glib.read_bytes(), original)
+            events.append(args)
+            return "x86_64" if args[:2] == ("lipo", "-archs") else ""
+
+        def metadata(path):
+            deps = ["@loader_path/lib/" + glib.name] if path == main else []
+            return deps, [], None
+
+        with patch.object(bundle, "run", side_effect=run), \
+                patch.object(bundle.subprocess, "run") as subprocess_run, \
+                patch.object(bundle, "metadata", side_effect=metadata), \
+                patch.object(self.builder, "assets"), \
+                patch.object(self.builder, "notices"):
+            self.builder.build()
+        subprocess_run.assert_not_called()
+        edits = [i for i, event in enumerate(events) if event[0] == "install_name_tool"]
+        signs = [i for i, event in enumerate(events) if event[:2] == ("codesign", "--force")]
+        checks = [i for i, event in enumerate(events) if event[:2] == ("codesign", "--verify")]
+        self.assertEqual(len(edits), 2)
+        self.assertEqual(len(signs), len(required) + 1)
+        self.assertEqual(len(checks), len(signs))
+        self.assertLess(max(edits), min(signs))
+        self.assertLess(max(signs), min(checks))
+        self.assertTrue(all(events[i][1:3] == ("--verify", "--strict") for i in checks))
+
     def test_basename_collision_is_fatal(self):
         first = self.image(self.root / "first/libtest.dylib", b"one")
         second = self.image(self.root / "second/libtest.dylib", b"two")

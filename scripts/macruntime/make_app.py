@@ -125,12 +125,10 @@ def make_app(stage, plist):
             source.rmdir()
     shutil.copy2(plist, contents / "Info.plist")
 
-    # Every image was signed by the flat bundler. Remove those signatures before
-    # changing load commands, then sign all nested code before sealing the app.
-    for binary in edits:
-        binary.chmod(binary.stat().st_mode | 0o200)
-        run("codesign", "--remove-signature", binary)
+    # Edit signed images without stripping their __LINKEDIT signature data.
+    # Replace invalidated signatures only after all rewrites, then seal the app.
     for binary, changes in edits.items():
+        binary.chmod(binary.stat().st_mode | 0o200)
         if changes:
             run("install_name_tool", *changes, binary)
     for binary in sorted(edits, key=lambda p: (-len(p.parts), str(p))):

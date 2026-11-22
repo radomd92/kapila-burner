@@ -1,6 +1,7 @@
 Core-build and native-header fixes; retain bundle path options in core mode.
 Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
 Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
+Size the startup executable directory from its actual path, not the working directory.
 --- a/configure.ac
 +++ b/configure.ac
 @@ -50,7 +50,6 @@
@@ -62,6 +63,32 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
  #if !defined HAVE_core_BUILD || !HAVE_core_BUILD
  
          case '9':
+--- a/src/dvda-author.c
++++ b/src/dvda-author.c
+@@ -139,14 +139,19 @@
+     char TEMPDIRROOT[currentdirlength + 14];
+     TEMPDIR = calloc(currentdirlength + 20, sizeof(char));
+     LPLEXTEMPDIR = calloc(currentdirlength + 26, sizeof(char));
+-    char *EXECDIR = calloc(MAX(currentdirlength, 20) + 4 + 25, sizeof(char));  // /usr/local/bin or /usr/bin under *NIX, "currentdir" directory/bin otherwise (win32...)
+-    // 4 for "/bin and be liberal and allow 25 more characters for the executable name.
+ 
+ #if defined BINDIR && ! defined LOCAL_BUILD
+-    memcpy(EXECDIR, BINDIR, strlen(BINDIR));
++    char *EXECDIR = strdup(BINDIR);
+ #else
+-    sprintf(EXECDIR, "%s" SEPARATOR "bin", currentdir);
++    char *EXECDIR = malloc(strlen(currentdir) + sizeof(SEPARATOR "bin"));
++    if (EXECDIR != NULL)
++        sprintf(EXECDIR, "%s" SEPARATOR "bin", currentdir);
+ #endif
++    if (EXECDIR == NULL)
++    {
++        perror("Allocate executable directory");
++        exit(EXIT_FAILURE);
++    }
+ 
+     char *DATADIR=strdup(currentdir);
+     char ***SNDT=calloc(1, sizeof(char**));
 --- a/src/launch_manager.c
 +++ b/src/launch_manager.c
 @@ -99,7 +99,7 @@

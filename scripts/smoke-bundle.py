@@ -20,6 +20,7 @@ def main():
     utilities = stage / "Helpers" if app_layout else stage / "tools/bin"
     suffix = ".exe" if sys.platform == "win32" or os.environ.get("MSYSTEM") else ""
     env = os.environ.copy()
+    env["G_DEBUG"] = "fatal-criticals"
     for key in ("FFMPEG", "FFPROBE", "DVDA_AUTHOR", "MKISOFS", "VCDIMAGER", "CDRDAO",
                 "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "GDK_PIXBUF_MODULE_FILE"):
         env.pop(key, None)

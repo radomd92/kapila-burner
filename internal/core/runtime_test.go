@@ -2,14 +2,139 @@ package core
 
 import (
 	"context"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"dvd-audio-studio/internal/runtimeenv"
 )
+
+func TestBundledAuthorIntegration(t *testing.T) {
+	if os.Getenv("DVDA_INTEGRATION") != "1" {
+		t.Skip("set DVDA_INTEGRATION=1 and DVDA_AUTHOR_RAW to a source-built executable")
+	}
+	source := os.Getenv("DVDA_AUTHOR_RAW")
+	if source == "" {
+		t.Skip("set DVDA_AUTHOR_RAW to a source-built executable")
+	}
+	if runtime.GOOS != "linux" {
+		t.Skip("this raw ELF fixture uses system libraries; native package smoke tests cover the other platforms")
+	}
+	root := filepath.Join(t.TempDir(), "kapila relocated with spaces", strings.Repeat("long-bundle-path-", 6), "kapila-maker-linux-amd64")
+	stage := filepath.Dir(filepath.Dir(filepath.Dir(source)))
+	ffmpeg := filepath.Join(filepath.Dir(source), "ffmpeg")
+	if _, err := os.Stat(ffmpeg); err != nil {
+		ffmpeg, err = exec.LookPath("ffmpeg")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	dataDir := filepath.Join("tools", "share", "dvda-author")
+	if err := os.MkdirAll(filepath.Join(root, dataDir), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct{ source, target string }{
+		{source, filepath.Join("tools", "bin", "dvda-author")},
+		{ffmpeg, filepath.Join("tools", "bin", "ffmpeg")},
+		{filepath.Join(stage, dataDir), dataDir},
+	} {
+		if item.target == dataDir {
+			if _, err := os.Stat(item.source); os.IsNotExist(err) {
+				continue
+			}
+		}
+		err := filepath.WalkDir(item.source, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			name, err := filepath.Rel(item.source, path)
+			if err != nil {
+				return err
+			}
+			target := filepath.Join(root, item.target, name)
+			if entry.IsDir() {
+				return os.MkdirAll(target, 0700)
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(target, data, 0700)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	job := filepath.Join(t.TempDir(), "unrelated job with spaces")
+	if err := os.MkdirAll(job, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(runtimeenv.ToolDir(root), "dvda-author")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	for _, name := range []string{"audio", "lplex", "lplex-output"} {
+		if err := os.Mkdir(filepath.Join(job, name), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fullHelp := []string{"-W", "--bindir", filepath.Dir(path), "--datadir", filepath.Join(runtimeenv.ResourceDir(root), "tools", "share", "dvda-author"), "--workdir", job, "-D", filepath.Join(job, "audio"), "--lplex-tempdir", filepath.Join(job, "lplex"), "--lplex-output", filepath.Join(job, "lplex-output"), "-h"}
+	for _, dir := range []string{job, os.TempDir()} {
+		for _, args := range [][]string{{"--help"}, {"-h"}, {"-W", "--help"}, {"-W", "-h"}, fullHelp} {
+			probeCtx, stop := context.WithTimeout(ctx, 5*time.Second)
+			cmd := exec.CommandContext(probeCtx, path, args...)
+			cmd.Dir, cmd.Env = dir, runtimeenv.CommandEnv(root)
+			configureProcess(cmd)
+			output, err := cmd.CombinedOutput()
+			stop()
+			if err != nil {
+				t.Logf("probe %q in %q: %v\n%s", args, dir, err, output)
+			} else {
+				t.Logf("probe %q in %q: success (%d output bytes)", args, dir, len(output))
+			}
+			if (strings.Join(args, " ") == "-W -h" || len(args) == len(fullHelp)) && err != nil {
+				t.Errorf("config-independent help failed in %q: %v", dir, err)
+			}
+		}
+	}
+	t.Setenv("DVDA_AUTHOR", "")
+	var author Tool
+	for _, tool := range discoverToolsFor(t.TempDir(), root, runtime.GOOS) {
+		if tool.Name == "dvda-author" {
+			author = tool
+		}
+	}
+	if !author.Ready || author.bundleRoot != root {
+		t.Errorf("relocated author readiness: %+v", author)
+	}
+	pcm := filepath.Join(job, "input.wav")
+	cmd := exec.CommandContext(ctx, filepath.Join(runtimeenv.ToolDir(root), "ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", pcm)
+	cmd.Dir, cmd.Env = job, runtimeenv.CommandEnv(root)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("synthetic WAV: %v\n%s", err, output)
+	}
+	disc := filepath.Join(job, "disc")
+	if err := os.Mkdir(disc, 0700); err != nil {
+		t.Fatal(err)
+	}
+	s := &Engine{job: &Job{}, tools: []Tool{author}}
+	if err := s.command(ctx, job, path, "-W", "-P0", "-o", disc, "-g", pcm); err != nil {
+		t.Fatalf("relocated authoring: %v\n%s", err, strings.Join(s.job.Log, "\n"))
+	}
+	for _, name := range []string{"AUDIO_TS.IFO", "ATS_01_0.IFO", "ATS_01_1.AOB"} {
+		if info, err := os.Stat(filepath.Join(disc, "AUDIO_TS", name)); err != nil || info.Size() == 0 {
+			t.Fatalf("missing/empty %s: %v", name, err)
+		}
+	}
+	t.Log("relocated two-second DVD-Audio authoring produced nonempty IFO/AOB files")
+}
 
 func writeRuntimeTool(t *testing.T, path, script string) {
 	t.Helper()
@@ -18,6 +143,39 @@ func writeRuntimeTool(t *testing.T, path, script string) {
 	}
 	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0700); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestBundledAuthorReadiness(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake tools use POSIX scripts")
+	}
+	for _, bundled := range []bool{true, false} {
+		for _, fail := range []bool{false, true} {
+			root := filepath.Join(t.TempDir(), "bundle with spaces")
+			path := filepath.Join(runtimeenv.ToolDir(root), "dvda-author")
+			script := "[ \"$#\" -eq 2 ] && [ \"$1\" = -W ] && [ \"$2\" = -h ] || exit 9\n"
+			if bundled {
+				t.Setenv("DVDA_AUTHOR", "")
+			} else {
+				path = filepath.Join(t.TempDir(), "external-author")
+				t.Setenv("DVDA_AUTHOR", path)
+				script = "[ \"$#\" -eq 1 ] && [ \"$1\" = --help ] || exit 9\n"
+			}
+			if fail {
+				script += "printf 'dependency failure\\n' >&2\nexit 1\n"
+			} else {
+				script += "exit 0\n"
+			}
+			writeRuntimeTool(t, path, script)
+			for _, tool := range discoverToolsFor(t.TempDir(), root, runtime.GOOS) {
+				if tool.Name == "dvda-author" {
+					if tool.Ready == fail || tool.Path != path || (fail && !strings.Contains(tool.Detail, "exit status 1")) {
+						t.Fatalf("bundled=%v fail=%v: %+v", bundled, fail, tool)
+					}
+				}
+			}
+		}
 	}
 }
 

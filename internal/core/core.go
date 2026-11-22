@@ -387,6 +387,10 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		checkArgs := []string{arg}
+		if name == "dvda-author" && t.bundleRoot != "" {
+			// Match native authoring's config-independent invocation.
+			checkArgs = []string{"-W", "-h"}
+		}
 		if name == "cdrdao" {
 			checkArgs = []string{"write", "--help"}
 		}
