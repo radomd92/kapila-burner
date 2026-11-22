@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tarfile
 import tempfile
@@ -31,21 +32,38 @@ class RuntimeSourcesTests(unittest.TestCase):
         self.output.mkdir()
         self.scratch = self.root / "scratch"
         self.scratch.mkdir()
+        self.repository = self.root / "brew"
 
-    def mac_stage(self, version="2.0_1"):
-        recipe = self.stage / "THIRD-PARTY-LICENSES/glib" / version / "formula/glib.rb"
+    def mac_stage(self, version="2.0_1", name="glib"):
+        recipe = self.stage / "THIRD-PARTY-LICENSES" / name / version / "formula" / (name + ".rb")
         recipe.parent.mkdir(parents=True)
         recipe.write_text('class Glib < Formula\n  url "https://example.test/glib.tar.xz"\nend\n')
         (self.stage / "MACOS-RUNTIME-MANIFEST.json").write_text(json.dumps([
-            {"formula": "glib", "version": version, "install_receipt": {"built_as_bottle": True}}
+            {"formula": name, "version": version, "install_receipt": {"built_as_bottle": True}}
         ]))
 
     def mac_info(self, version="2.0", revision=1):
         return {"formulae": [{"name": "glib", "full_name": "glib", "revision": revision,
                               "versions": {"stable": version},
-                              "urls": {"stable": {"url": "https://example.test/glib.tar.xz",
-                                                  "checksum": "upstream-checksum"}},
-                              "resources": [{"name": "patch", "url": "https://example.test/fix.patch"}]}]}
+                               "urls": {"stable": {"url": "https://example.test/glib.tar.xz",
+                                                   "checksum": "upstream-checksum"}},
+                              "ruby_source_checksum": {"sha256": sources.digest(next(self.stage.rglob("*.rb")))},
+                               "resources": [{"name": "patch", "url": "https://example.test/fix.patch"}]}]}
+
+    def brew_metadata(self, args, info=None):
+        if args == ("brew", "--repository"):
+            return str(self.repository)
+        self.assertEqual(args[:3], ("brew", "info", "--json=v2"))
+        self.assertEqual(len(args), 4)
+        user, tap, name = args[3].split("/")
+        self.assertEqual(user, "kapila-maker")
+        self.assertTrue(tap.startswith("runtime-sources-"))
+        recipe = self.repository / "Library/Taps" / user / ("homebrew-" + tap) / "Formula" / (name + ".rb")
+        self.assertEqual(recipe.read_bytes(), next(self.stage.rglob("*.rb")).read_bytes())
+        self.assertFalse((recipe.parent.parent / ".git").exists())
+        info = info if info is not None else self.mac_info()
+        info["formulae"][0]["full_name"] = args[3]
+        return json.dumps(info)
 
     def windows_stage(self):
         (self.stage / "WINDOWS-RUNTIME-PACKAGES.txt").write_text(
@@ -88,9 +106,9 @@ class RuntimeSourcesTests(unittest.TestCase):
         def brew(*args, env=None):
             commands.append(args)
             self.assertTrue(Path(env["HOMEBREW_CACHE"]).is_relative_to(self.scratch))
-            if args[1] == "info":
-                return json.dumps(self.mac_info())
-            self.assertEqual(args, ("brew", "fetch", "--build-from-source", "--retry", "glib"))
+            if args[1] != "fetch":
+                return self.brew_metadata(args)
+            self.assertEqual(args, ("brew", "fetch", "--build-from-source", "--retry", commands[-2][-1]))
             downloads = Path(env["HOMEBREW_CACHE"]) / "downloads"
             downloads.mkdir()
             for name, data in (("hash--glib.tar.xz", b"source"), ("hash--fix.patch", b"patch"),
@@ -102,7 +120,8 @@ class RuntimeSourcesTests(unittest.TestCase):
 
         with patch.object(sources, "run", side_effect=brew):
             sources.collect_macos(self.stage, self.output, self.scratch)
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 3)
+        self.assertEqual(list((self.repository / "Library/Taps/kapila-maker").iterdir()), [])
         result = json.loads((self.output / "SOURCE-MANIFEST.json").read_text())["packages"][0]
         self.assertEqual(len(result["archives"]), 3)
         self.assertEqual(result["resources"], self.mac_info()["formulae"][0]["resources"])
@@ -112,12 +131,91 @@ class RuntimeSourcesTests(unittest.TestCase):
     def test_macos_rejects_source_version_or_revision_mismatch_before_fetch(self):
         self.mac_stage()
         for info in (self.mac_info("2.1"), self.mac_info(revision=2)):
-            with self.subTest(info=info), patch.object(sources, "run", return_value=json.dumps(info)) as run:
+            with self.subTest(info=info), patch.object(
+                    sources, "run", side_effect=lambda *args, env=None: self.brew_metadata(args, info)) as run:
                 with self.assertRaisesRegex(sources.CollectionError, "version mismatch"):
                     sources.collect_macos(self.stage, self.output, self.scratch)
-                self.assertEqual(run.call_count, 1)
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(list((self.repository / "Library/Taps/kapila-maker").iterdir()), [])
+
+    def test_macos_installed_adwaita_50_snapshot_not_latest_api_51(self):
+        self.mac_stage("50.0", "adwaita-icon-theme")
+        recipe = next(self.stage.rglob("*.rb"))
+        recipe.write_text('class AdwaitaIconTheme < Formula\n'
+                          '  url "https://example.test/adwaita-50.0.tar.xz"\n'
+                          '  sha256 "' + "a" * 64 + '"\n'
+                          '  resource "icons" do\n'
+                          '    url "https://example.test/icons-50.0.tar.xz"\n'
+                          '    sha256 "' + "b" * 64 + '"\n  end\nend\n')
+        original = recipe.read_bytes()
+        info = self.mac_info("50.0", 0)
+        formula = info["formulae"][0]
+        formula["name"] = "adwaita-icon-theme"
+        formula["urls"]["stable"] = {"url": "https://example.test/adwaita-50.0.tar.xz",
+                                       "checksum": "a" * 64}
+        formula["resources"] = [{"name": "icons", "url": "https://example.test/icons-50.0.tar.xz",
+                                 "checksum": "b" * 64}]
+        commands = []
+
+        def brew(*args, env=None):
+            commands.append(args)
+            self.assertEqual(env.get("HOMEBREW_NO_INSTALL_FROM_API"), os.environ.get("HOMEBREW_NO_INSTALL_FROM_API"))
+            if args == ("brew", "info", "--json=v2", "adwaita-icon-theme"):
+                return json.dumps(self.mac_info("51.0", 0))
+            if args[1] != "fetch":
+                return self.brew_metadata(args, info)
+            self.assertEqual(args, ("brew", "fetch", "--build-from-source", "--retry", commands[-2][-1]))
+            downloads = Path(env["HOMEBREW_CACHE"]) / "downloads"
+            downloads.mkdir()
+            (downloads / "hash--adwaita-50.0.tar.xz").write_bytes(b"50.0 source")
+            (downloads / "hash--icons-50.0.tar.xz").write_bytes(b"50.0 resource")
+            return ""
+
+        with patch.object(sources, "run", side_effect=brew):
+            sources.collect_macos(self.stage, self.output, self.scratch)
+        self.assertEqual(len(commands), 3)
+        record = json.loads((self.output / "SOURCE-MANIFEST.json").read_text())["packages"][0]
+        self.assertEqual(record["version"], "50.0")
+        self.assertEqual(record["origin"], formula["urls"])
+        self.assertEqual(record["resources"], formula["resources"])
+        self.assertEqual(len(record["archives"]), 2)
+        self.assertEqual(recipe.read_bytes(), original)
+        self.assertEqual((self.output / record["installed_formula_snapshots"][0]).read_bytes(), original)
+        self.assert_hashes(self.output)
+
+    def test_macos_rejects_same_version_changed_recipe_or_missing_origin(self):
+        self.mac_stage()
+        for field in ("ruby_source_checksum", "urls"):
+            info = self.mac_info()
+            info["formulae"][0][field] = {}
+            with self.subTest(field=field), patch.object(
+                    sources, "run", side_effect=lambda *args, env=None: self.brew_metadata(args, info)) as run:
+                with self.assertRaisesRegex(sources.CollectionError, "snapshot metadata mismatch"):
+                    sources.collect_macos(self.stage, self.output, self.scratch)
+                self.assertEqual(run.call_count, 2)
+
+    def test_macos_private_tap_cleanup_on_fetch_failure_leaves_other_taps(self):
+        self.mac_stage()
+        existing = self.repository / "Library/Taps/kapila-maker/homebrew-runtime-sources-existing/Formula/user.rb"
+        existing.parent.mkdir(parents=True)
+        existing.write_bytes(b"user recipe")
+        original = next(self.stage.rglob("*.rb")).read_bytes()
+
+        def brew(*args, env=None):
+            if args[1] == "fetch":
+                raise sources.CollectionError("fetch failed")
+            return self.brew_metadata(args)
+
+        with patch.object(sources, "run", side_effect=brew):
+            with self.assertRaisesRegex(sources.CollectionError, "fetch failed"):
+                sources.main([str(self.stage)])
+        self.assertEqual(list(existing.parents[2].iterdir()), [existing.parents[1]])
+        self.assertEqual(existing.read_bytes(), b"user recipe")
+        self.assertEqual(next(self.stage.rglob("*.rb")).read_bytes(), original)
+        self.assertEqual(list((self.stage / "SOURCE-ARCHIVES").iterdir()), [])
 
     def test_macos_normalizes_zero_revision(self):
+        self.mac_stage()
         self.assertEqual(sources.normalized_brew_version("1.2_0"), "1.2")
         self.assertEqual(sources.brew_version(self.mac_info(revision=0)["formulae"][0]), "2.0")
         self.assertNotEqual(sources.normalized_brew_version("1.2_1"), "1.2")
@@ -125,7 +223,7 @@ class RuntimeSourcesTests(unittest.TestCase):
     def test_macos_requires_installed_recipe(self):
         self.mac_stage()
         next(self.stage.rglob("*.rb")).unlink()
-        with patch.object(sources, "run", return_value=json.dumps(self.mac_info())):
+        with patch.object(sources, "run", side_effect=lambda *args, env=None: self.brew_metadata(args)):
             with self.assertRaisesRegex(sources.CollectionError, "snapshot"):
                 sources.collect_macos(self.stage, self.output, self.scratch)
 
@@ -133,8 +231,8 @@ class RuntimeSourcesTests(unittest.TestCase):
         self.mac_stage()
         for bottle in (False, True):
             def brew(*args, env=None):
-                if args[1] == "info":
-                    return json.dumps(self.mac_info())
+                if args[1] != "fetch":
+                    return self.brew_metadata(args)
                 downloads = Path(env["HOMEBREW_CACHE"]) / "downloads"
                 downloads.mkdir(parents=True, exist_ok=True)
                 if bottle:
@@ -148,6 +246,24 @@ class RuntimeSourcesTests(unittest.TestCase):
                 output.mkdir()
                 with self.assertRaises(sources.CollectionError):
                     sources.collect_macos(self.stage, output, scratch)
+
+    def test_macos_rejects_ambiguous_or_symlinked_snapshots_before_info(self):
+        self.mac_stage()
+        recipe = next(self.stage.rglob("*.rb"))
+        extra = recipe.with_name("other.rb")
+        extra.write_bytes(b"ambiguous recipe")
+        for unsafe in ("ambiguous", "symlink"):
+            if unsafe == "symlink":
+                extra.unlink()
+                original = self.root / "original.rb"
+                recipe.rename(original)
+                recipe.symlink_to(original)
+            with self.subTest(unsafe=unsafe), patch.object(
+                    sources, "run", side_effect=lambda *args, env=None: self.brew_metadata(args)) as run:
+                with self.assertRaisesRegex(sources.CollectionError, "snapshot"):
+                    sources.collect_macos(self.stage, self.output, self.scratch)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(list((self.repository / "Library/Taps/kapila-maker").iterdir()), [])
 
     def test_windows_filters_license_only_owners(self):
         self.windows_stage()

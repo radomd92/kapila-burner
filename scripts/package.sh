@@ -65,6 +65,9 @@ case "$os" in
     "$native_python" scripts/smoke-bundle.py "$package"
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 \
       -Stage "$(cygpath -w "$package")" -OutputDir "$(cygpath -w dist)"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 \
+      -Installer "$(cygpath -w dist/kapila-maker-windows-amd64-setup.exe)" \
+      -Python "$PYTHON_NATIVE" -SmokeScriptPath "$(cygpath -w "$PWD/scripts/smoke-bundle.py")"
     (cd dist && zip -qr "$name.zip" "$name")
     ;;
   darwin)
@@ -76,6 +79,7 @@ case "$os" in
     rm -rf -- "$package/SOURCE-ARCHIVES"
     python3 scripts/smoke-bundle.py "$package"
     bash scripts/make-macos-app.sh "$package" dist
+    bash scripts/test-macos-dmg.sh dist/kapila-maker-macos-amd64.dmg
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
   linux)

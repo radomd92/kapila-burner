@@ -370,9 +370,15 @@ cp "$work/ffmpeg-modern-install/bin/ffmpeg$exe" "$work/ffmpeg-modern-install/bin
 cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg.txt"
 run_utility "$stage/tools/bin/ffmpeg$exe" -version
 run_utility "$stage/tools/bin/ffprobe$exe" -version
+vcd_cflags="${CFLAGS:--O2} -std=gnu99 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types"
+if [[ $platform == WindowsMINGW64 ]]; then
+    # VCD's GNU-packed mixed-type bitfields must occupy on-disc bytes, not MS units.
+    vcd_cflags+=' -mno-ms-bitfields'
+fi
 (
     cd "$work/src/vcdimager"
-    CC="$compiler" CFLAGS="${CFLAGS:--O2} -std=gnu99 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
+    # Configure persists these CFLAGS in the library and CLI makefiles.
+    CC="$compiler" CFLAGS="$vcd_cflags" \
         ./configure --prefix="$work/vcd-install" --disable-shared --enable-static \
         --without-xml-frontend --build="$triplet" --host="$triplet"
     "$make" -C lib -j"$jobs" libvcd.la
@@ -449,6 +455,7 @@ done
     "$bin/ffmpeg$exe" -version
     "$bin/ffprobe$exe" -version
     "$bin/vcdimager$exe" --version
+    printf 'VCDImager 2.0.1 CFLAGS (configure and make): %s\n' "$vcd_cflags"
     "$bin/mkisofs$exe" -version
     printf '\nAuthor configured with --enable-core-build; private static FFmpeg 4.2.4 (--disable-programs).\n'
     printf 'Private FFmpeg: only file/WAV, PCM16/24/32 and MLP decoders, MLP encoder/muxer/parser, and audio conversion filters.\n'

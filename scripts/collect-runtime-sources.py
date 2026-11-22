@@ -6,6 +6,7 @@ An unavailable/mismatched source is a release error, not a partial success.
 """
 
 import argparse
+from contextlib import contextmanager
 import csv
 import hashlib
 import json
@@ -104,6 +105,31 @@ def normalized_brew_version(version):
     return re.sub(r"_0$", "", version)
 
 
+@contextmanager
+def installed_brew_tap(stage, inventory, env):
+    repository = Path(run("brew", "--repository", env=env).strip())
+    parent = repository / "Library/Taps/kapila-maker"
+    parent.mkdir(parents=True, exist_ok=True)
+    # Tap.installed? checks for a directory, not a Git repository. No tap-new
+    # templates, Git identity/configuration, network tap or history are needed.
+    with tempfile.TemporaryDirectory(prefix="homebrew-runtime-sources-", dir=parent) as temporary:
+        tap = Path(temporary)
+        (tap / "Formula").mkdir()
+        selected = []
+        for item in inventory:
+            name, version = item["formula"], component(item["version"])
+            snapshots = stage / "THIRD-PARTY-LICENSES" / name / version / "formula"
+            recipes = sorted(snapshots.rglob("*.rb"))
+            if (len(recipes) != 1 or recipes[0].name != name + ".rb"
+                    or any(p.is_symlink() for p in (recipes[0], *recipes[0].parents)
+                           if p.is_relative_to(stage))):
+                raise CollectionError(f"Missing/unsafe or ambiguous installed formula snapshot for {name} {version}")
+            shutil.copyfile(recipes[0], tap / "Formula" / (name + ".rb"))
+            full_name = f"kapila-maker/{tap.name.removeprefix('homebrew-')}/{name}"
+            selected.append((item, full_name, recipes, snapshots))
+        yield selected
+
+
 def collect_macos(stage, output, scratch):
     inventory = json.loads((stage / "MACOS-RUNTIME-MANIFEST.json").read_text())
     if not isinstance(inventory, list) or not inventory:
@@ -113,27 +139,35 @@ def collect_macos(stage, output, scratch):
         raise CollectionError("Duplicate macOS runtime formula")
     env = dict(os.environ, HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_NO_ANALYTICS="1",
                HOMEBREW_CACHE=str(scratch / "brew-info"))
-    metadata = json.loads(run("brew", "info", "--json=v2", *names, env=env))
+    with installed_brew_tap(stage, inventory, env) as selected:
+        collect_brew_sources(output, scratch, env, selected)
+
+
+def collect_brew_sources(output, scratch, env, selected):
+    metadata = json.loads(run("brew", "info", "--json=v2",
+                              *(full_name for _, full_name, _, _ in selected), env=env))
     write_json(output / "brew-info.json", metadata)
     records = []
     # Validate the entire closure before starting potentially large downloads.
-    selected = []
-    for item in inventory:
+    validated = []
+    for item, full_name, recipes, snapshots in selected:
         name, version = item["formula"], component(item["version"])
         matches = [info for info in metadata["formulae"]
-                   if name in (info["name"], info.get("full_name"))]
+                   if info.get("full_name") == full_name and info["name"] == name]
         if len(matches) != 1:
             raise CollectionError(f"No unique Homebrew source metadata for {name}")
         info = matches[0]
         if normalized_brew_version(version) != normalized_brew_version(brew_version(info)):
             raise CollectionError(f"Homebrew source version mismatch: {name} installed {version}, "
                                   f"available {brew_version(info)}")
-        snapshots = stage / "THIRD-PARTY-LICENSES" / name / version / "formula"
-        recipes = sorted(snapshots.rglob("*.rb"))
-        if not recipes or any(p.is_symlink() for p in recipes):
-            raise CollectionError(f"Missing/unsafe installed formula snapshot for {name} {version}")
-        selected.append((item, info, recipes, snapshots))
-    for item, info, recipes, snapshots in selected:
+        # This binds URL/checksum/resource metadata to the exact installed Ruby
+        # recipe, even when the latest recipe has the same version/revision.
+        stable = info.get("urls", {}).get("stable", {})
+        if (info.get("ruby_source_checksum", {}).get("sha256") != digest(recipes[0])
+                or not stable.get("url") or not stable.get("checksum")):
+            raise CollectionError(f"Homebrew source snapshot metadata mismatch: {name} {version}")
+        validated.append((item, full_name, info, recipes, snapshots))
+    for item, full_name, info, recipes, snapshots in validated:
         name, version = item["formula"], item["version"]
         formula_dir = output / "formulae" / name / version
         formula_dir.mkdir(parents=True)
@@ -148,7 +182,7 @@ def collect_macos(stage, output, scratch):
         cache.mkdir()
         env["HOMEBREW_CACHE"] = str(cache)
         print(f"Fetching Homebrew sources: {name} {version}", flush=True)
-        run("brew", "fetch", "--build-from-source", "--retry", name, env=env)
+        run("brew", "fetch", "--build-from-source", "--retry", full_name, env=env)
         downloads = cache / "downloads"
         archives = []
         for path in sorted(downloads.rglob("*")):
