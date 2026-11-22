@@ -334,7 +334,7 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 				if goos == "windows" {
 					localName += ".exe"
 				}
-				local := filepath.Join(root, "tools", "bin", localName)
+				local := filepath.Join(runtimeenv.ToolDir(root), localName)
 				if info, err := os.Stat(local); err == nil && info.Mode().IsRegular() && (path == "" || path == local) {
 					path, toolRoot = local, root
 					break
@@ -437,8 +437,11 @@ func (s *Engine) runtimePath(path string) bool {
 		if root == "" {
 			continue
 		}
-		for _, name := range []string{"tools", "lib", "share", "etc"} {
-			protected := filepath.Join(root, name)
+		resources := runtimeenv.ResourceDir(root)
+		if resources != root && (within(resources, path) || within(filepath.Join(root, "MacOS"), path)) {
+			return true
+		}
+		for _, protected := range []string{runtimeenv.ToolDir(root), runtimeenv.LibraryDir(root), filepath.Join(resources, "tools"), filepath.Join(resources, "share"), filepath.Join(resources, "etc")} {
 			if resolved, err := filepath.EvalSymlinks(protected); err == nil {
 				protected = resolved
 			}
@@ -723,7 +726,7 @@ func (s *Engine) command(ctx context.Context, dir, path string, args ...string) 
 				return err
 			}
 		}
-		prefix := []string{"-W", "--bindir", filepath.Join(root, "tools", "bin"), "--datadir", filepath.Join(root, "tools", "share", "dvda-author"), "--workdir", dir, "-D", filepath.Join(scratch, "audio"), "--lplex-tempdir", filepath.Join(scratch, "lplex"), "--lplex-output", filepath.Join(scratch, "lplex-output")}
+		prefix := []string{"-W", "--bindir", filepath.Dir(path), "--datadir", filepath.Join(runtimeenv.ResourceDir(root), "tools", "share", "dvda-author"), "--workdir", dir, "-D", filepath.Join(scratch, "audio"), "--lplex-tempdir", filepath.Join(scratch, "lplex"), "--lplex-output", filepath.Join(scratch, "lplex-output")}
 		args = append(prefix, args...)
 	}
 	s.appendLog("$ " + filepath.Base(path) + " " + strings.Join(args, " "))

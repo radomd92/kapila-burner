@@ -63,6 +63,8 @@ copy_tree() {
   local source=$1 target=$2 file
   [[ -d $source ]] || { printf 'Missing GTK runtime directory: %s\n' "$source" >&2; exit 1; }
   while IFS= read -r -d '' file; do
+    # The runtime bootstrap regenerates this cache with relocated module paths.
+    if [[ $file == "$prefix/lib/gtk-3.0/"*/immodules.cache ]]; then continue; fi
     copy_runtime "$file" "$target/${file#"$source/"}"
   done < <(find -L "$source" -type f -print0)
 }
@@ -85,6 +87,28 @@ copy_tree "$prefix/lib/gdk-pixbuf-2.0/2.10.0/loaders" "$destination/lib/gdk-pixb
 for directory in lib/gio/modules lib/gtk-3.0; do
   if [[ -d $prefix/$directory ]]; then copy_tree "$prefix/$directory" "$destination/$directory"; fi
 done
+immodules=()
+if [[ -d $destination/lib/gtk-3.0 ]]; then
+  while IFS= read -r -d '' file; do
+    immodules+=("$(cygpath -am "$file")")
+  done < <(find "$destination/lib/gtk-3.0" -type f -path '*/immodules/*' -iname '*.dll' -print0)
+  while IFS= read -r -d '' file; do rm -- "$file"; done < <(find "$destination/lib/gtk-3.0" -type f -name immodules.cache -print0)
+fi
+if ((${#immodules[@]})); then
+  imquery="$prefix/bin/gtk-query-immodules-3.0.exe"
+  if [[ ! -f $imquery ]]; then
+    imquery=
+    for directory in "$prefix/libexec" "$prefix/lib/gtk-3.0"; do
+      [[ -d $directory ]] || continue
+      while IFS= read -r -d '' file; do imquery=$file; break; done < <(find "$directory" -type f -name gtk-query-immodules-3.0.exe -print0)
+      [[ -z $imquery ]] || break
+    done
+  fi
+  [[ -n $imquery && -f $imquery ]] || {
+    printf 'GTK input-method modules require gtk-query-immodules-3.0.exe in /mingw64/bin or a GTK libexec directory.\n' >&2; exit 1
+  }
+  copy_runtime "$imquery" "$destination/gtk-query-immodules-3.0.exe"
+fi
 for directory in share/glib-2.0 share/gtk-3.0; do
   copy_tree "$prefix/$directory" "$destination/$directory"
 done
@@ -167,6 +191,32 @@ done < <(find "$destination" -type f \( -iname '*.exe' -o -iname '*.dll' \) -pri
 
 # Native smoke commands inherit only the stage and Windows system DLL paths.
 export PATH="$destination:$destination/tools/bin:$windows/System32"
+if ((${#immodules[@]})); then
+  # Explicit native paths prevent GTK from querying its compiled-in build prefix.
+  imcache=$(MSYS2_ARG_CONV_EXCL='*' "$destination/gtk-query-immodules-3.0.exe" "${immodules[@]}")
+  if [[ ${imcache,,} == *mingw64* ]]; then
+    printf 'GTK input-method query cache retains a MinGW build-host path.\n' >&2; exit 1
+  fi
+  for module in "${immodules[@]}"; do
+    [[ $imcache == *\""$module"\"* ]] || {
+      printf 'GTK input-method query omitted staged module: %s\n' "$module" >&2; exit 1
+    }
+  done
+  module_pattern='^"([^"]+\.[dD][lL][lL])"$'
+  while IFS= read -r line; do
+    line=${line%$'\r'}
+    if [[ $line =~ $module_pattern ]]; then
+      module=${BASH_REMATCH[1]}
+      found=false
+      for staged_module in "${immodules[@]}"; do
+        if [[ $module == "$staged_module" ]]; then found=true; break; fi
+      done
+      if [[ $found != true ]]; then
+        printf 'GTK input-method query retains a non-staged module path: %s\n' "$module" >&2; exit 1
+      fi
+    fi
+  done <<< "$imcache"
+fi
 "$destination/kapila-burner.exe" -h
 "$destination/kapila-burner-web.exe" -h
 "$destination/tools/bin/ffmpeg.exe" -version

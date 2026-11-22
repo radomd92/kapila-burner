@@ -15,22 +15,25 @@ import urllib.request
 
 def main():
     stage = Path(sys.argv[1]).resolve()
+    app_layout = (stage / "MacOS").is_dir() and (stage / "Helpers").is_dir()
+    executables = stage / "MacOS" if app_layout else stage
+    utilities = stage / "Helpers" if app_layout else stage / "tools/bin"
     suffix = ".exe" if sys.platform == "win32" or os.environ.get("MSYSTEM") else ""
     env = os.environ.copy()
     for key in ("FFMPEG", "FFPROBE", "DVDA_AUTHOR", "MKISOFS", "VCDIMAGER", "CDRDAO",
                 "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "GDK_PIXBUF_MODULE_FILE"):
         env.pop(key, None)
     system = str(Path(env.get("SYSTEMROOT", "C:/Windows")) / "System32") if suffix else "/usr/bin:/bin:/usr/sbin:/sbin"
-    env["PATH"] = os.pathsep.join((str(stage), str(stage / "tools/bin"), system))
+    env["PATH"] = os.pathsep.join((str(executables), str(utilities), system))
     with tempfile.TemporaryDirectory(prefix="kapila relocated ") as temporary:
         work = Path(temporary)
         media, output = work / "media inputs", work / "output images"
         media.mkdir()
-        subprocess.run([str(stage / "tools/bin" / ("ffmpeg" + suffix)), "-nostdin", "-v", "error",
+        subprocess.run([str(utilities / ("ffmpeg" + suffix)), "-nostdin", "-v", "error",
                         "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-ac", "2",
                         "-ar", "44100", "-c:a", "pcm_s16le", str(media / "sample.wav")],
                        cwd=work, env=env, check=True, timeout=60)
-        server = subprocess.Popen([str(stage / ("kapila-burner-web" + suffix)), "-root", str(media),
+        server = subprocess.Popen([str(executables / ("kapila-burner-web" + suffix)), "-root", str(media),
                                    "-output", str(output), "-listen", "127.0.0.1:0"],
                                   cwd=work, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                   text=True, errors="replace")
@@ -110,7 +113,7 @@ def main():
                 server.kill()
                 server.wait()
         for language in ("plt", "en", "fr"):
-            subprocess.run([str(stage / ("kapila-burner" + suffix)), "-root", str(media),
+            subprocess.run([str(executables / ("kapila-burner" + suffix)), "-root", str(media),
                             "-output", str(output), "-lang", language, "-smoke-test"],
                            cwd=work, env=env, check=True, timeout=90)
     print("Relocated GUI and all authoring utilities PASS; no physical burning", flush=True)

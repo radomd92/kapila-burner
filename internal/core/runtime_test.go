@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"dvd-audio-studio/internal/runtimeenv"
 )
 
 func writeRuntimeTool(t *testing.T, path, script string) {
@@ -23,9 +25,20 @@ func TestBundledDiscovery(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake tools use POSIX scripts")
 	}
-	for _, goos := range []string{"darwin", "windows"} {
-		t.Run(goos, func(t *testing.T) {
+	for _, layout := range []string{"darwin", "windows", "darwin-app"} {
+		t.Run(layout, func(t *testing.T) {
+			goos := strings.TrimSuffix(layout, "-app")
 			bundle, app := t.TempDir(), t.TempDir()
+			if layout == "darwin-app" {
+				bundle, app = filepath.Join(bundle, "Bundled.app", "Contents"), filepath.Join(app, "App.app", "Contents")
+				for _, root := range []string{bundle, app} {
+					for _, name := range []string{"Helpers", "Resources"} {
+						if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+			}
 			t.Setenv("PATH", "")
 			for _, key := range []string{"FFMPEG", "FFPROBE", "DVDA_AUTHOR", "MKISOFS", "VCDIMAGER", "CDRDAO"} {
 				t.Setenv(key, "")
@@ -36,7 +49,7 @@ func TestBundledDiscovery(t *testing.T) {
 			}
 			for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager"} {
 				for _, root := range []string{bundle, app} {
-					writeRuntimeTool(t, filepath.Join(root, "tools", "bin", name+suffix), "case \"$PATH\" in \"$EXPECTED_BUNDLE\"*) ;; *) exit 3;; esac\nprintf '%s\\n' '-dvd-audio'\n")
+					writeRuntimeTool(t, filepath.Join(runtimeenv.ToolDir(root), name+suffix), "case \"$PATH\" in \"$EXPECTED_BUNDLE\"*) ;; *) exit 3;; esac\nprintf '%s\\n' '-dvd-audio'\n")
 				}
 			}
 			check := func(wantRoot string) {
@@ -46,13 +59,13 @@ func TestBundledDiscovery(t *testing.T) {
 					if tool.Name == "cdrdao" {
 						continue
 					}
-					if !tool.Ready || tool.Path != filepath.Join(wantRoot, "tools", "bin", tool.Name+suffix) || tool.bundleRoot != wantRoot {
+					if !tool.Ready || tool.Path != filepath.Join(runtimeenv.ToolDir(wantRoot), tool.Name+suffix) || tool.bundleRoot != wantRoot {
 						t.Fatalf("tool = %+v, bundleRoot = %q", tool, tool.bundleRoot)
 					}
 				}
 			}
 			check(bundle)
-			if err := os.RemoveAll(filepath.Join(bundle, "tools")); err != nil {
+			if err := os.RemoveAll(runtimeenv.ToolDir(bundle)); err != nil {
 				t.Fatal(err)
 			}
 			check(app)
@@ -68,7 +81,7 @@ func TestBundledDiscovery(t *testing.T) {
 				t.Fatal("invalid override must not silently fall back")
 			}
 			t.Setenv("FFMPEG", "")
-			if err := os.Remove(filepath.Join(app, "tools", "bin", "ffmpeg"+suffix)); err != nil {
+			if err := os.Remove(filepath.Join(runtimeenv.ToolDir(app), "ffmpeg"+suffix)); err != nil {
 				t.Fatal(err)
 			}
 			pathDir := t.TempDir()
@@ -84,14 +97,28 @@ func TestBundledDiscovery(t *testing.T) {
 }
 
 func TestBundledAuthorCommand(t *testing.T) {
+	for _, layout := range []string{"flat", "app"} {
+		t.Run(layout, func(t *testing.T) { testBundledAuthorCommand(t, layout == "app") })
+	}
+}
+
+func testBundledAuthorCommand(t *testing.T, app bool) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake tool uses a POSIX script")
 	}
 	for _, fail := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "failure"}[fail], func(t *testing.T) {
 			root, job := t.TempDir(), t.TempDir()
-			path := filepath.Join(root, "tools", "bin", "dvda-author")
-			data := filepath.Join(root, "tools", "share", "dvda-author")
+			if app {
+				root = filepath.Join(root, "Kapila Burner.app", "Contents")
+				for _, name := range []string{"Helpers", "Resources"} {
+					if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			path := filepath.Join(runtimeenv.ToolDir(root), "dvda-author")
+			data := filepath.Join(runtimeenv.ResourceDir(root), "tools", "share", "dvda-author")
 			if err := os.MkdirAll(data, 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -147,9 +174,25 @@ exit `+code+"\n")
 }
 
 func TestRuntimeDirectoriesNotSources(t *testing.T) {
+	for _, layout := range []string{"flat", "app"} {
+		t.Run(layout, func(t *testing.T) { testRuntimeDirectoriesNotSources(t, layout == "app") })
+	}
+}
+
+func testRuntimeDirectoriesNotSources(t *testing.T, app bool) {
 	root := t.TempDir()
+	names := []string{"tools", "lib", "share", "etc"}
+	if app {
+		root = filepath.Join(root, "Kapila Burner.app", "Contents")
+		names = []string{"Helpers", "Frameworks", "Resources", "MacOS"}
+		for _, name := range names {
+			if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	s := &Engine{root: root, app: root, output: filepath.Join(root, "output")}
-	for _, name := range []string{"tools", "lib", "share", "etc"} {
+	for _, name := range names {
 		path := filepath.Join(root, name, "secret.wav")
 		writeRuntimeTool(t, path, "")
 		if _, err := s.source(context.Background(), filepath.Join(name, "secret.wav")); err == nil {

@@ -30,10 +30,49 @@ func bundleRoot(exe string) string {
 		exe = resolved
 	}
 	root := filepath.Dir(exe)
+	if filepath.Base(root) == "MacOS" && appLayout(filepath.Dir(root)) {
+		return filepath.Dir(root)
+	}
 	if info, err := os.Stat(filepath.Join(root, "tools", "bin")); err == nil && info.IsDir() {
 		return root
 	}
 	return ""
+}
+
+func appLayout(root string) bool {
+	if filepath.Base(root) != "Contents" {
+		return false
+	}
+	for _, name := range []string{"Helpers", "Resources"} {
+		if info, err := os.Stat(filepath.Join(root, name)); err != nil || !info.IsDir() {
+			return false
+		}
+	}
+	return true
+}
+
+// ToolDir contains utility executables in signed macOS apps or flat bundles.
+func ToolDir(root string) string {
+	if appLayout(root) {
+		return filepath.Join(root, "Helpers")
+	}
+	return filepath.Join(root, "tools", "bin")
+}
+
+// ResourceDir contains data, never native code, in signed macOS apps.
+func ResourceDir(root string) string {
+	if appLayout(root) {
+		return filepath.Join(root, "Resources")
+	}
+	return root
+}
+
+// LibraryDir contains shared libraries and GTK modules.
+func LibraryDir(root string) string {
+	if appLayout(root) {
+		return filepath.Join(root, "Frameworks")
+	}
+	return filepath.Join(root, "lib")
 }
 
 // ApplicationDir preserves the local-development cwd default outside bundles.
@@ -92,7 +131,7 @@ func CommandEnv(root string) []string {
 			env = append(env, entry)
 		}
 	}
-	path := root + string(os.PathListSeparator) + filepath.Join(root, "tools", "bin")
+	path := root + string(os.PathListSeparator) + ToolDir(root)
 	if old := os.Getenv("PATH"); old != "" {
 		path += string(os.PathListSeparator) + old
 	}
@@ -126,17 +165,18 @@ func configure(root string, gtk bool) (func(), error) {
 	if !gtk {
 		return cleanup, nil
 	}
-	for _, item := range []struct{ key, relative, value string }{
-		{"XDG_DATA_DIRS", "share", ""},
-		{"GSETTINGS_SCHEMA_DIR", "share/glib-2.0/schemas", ""},
-		{"GTK_DATA_PREFIX", "share", root},
-		{"GTK_EXE_PREFIX", "lib", root},
-		{"GTK_PATH", "lib/gtk-3.0", ""},
-		{"GIO_MODULE_DIR", "lib/gio/modules", ""},
-		{"FONTCONFIG_PATH", "etc/fonts", ""},
-		{"FONTCONFIG_FILE", "etc/fonts/fonts.conf", ""},
+	resources, libraries := ResourceDir(root), LibraryDir(root)
+	for _, item := range []struct{ key, path, value string }{
+		{"XDG_DATA_DIRS", filepath.Join(resources, "share"), ""},
+		{"GSETTINGS_SCHEMA_DIR", filepath.Join(resources, "share", "glib-2.0", "schemas"), ""},
+		{"GTK_DATA_PREFIX", filepath.Join(resources, "share"), resources},
+		{"GTK_EXE_PREFIX", libraries, root},
+		{"GTK_PATH", filepath.Join(libraries, "gtk-3.0"), ""},
+		{"GIO_MODULE_DIR", filepath.Join(libraries, "gio", "modules"), ""},
+		{"FONTCONFIG_PATH", filepath.Join(resources, "etc", "fonts"), ""},
+		{"FONTCONFIG_FILE", filepath.Join(resources, "etc", "fonts", "fonts.conf"), ""},
 	} {
-		path := filepath.Join(root, filepath.FromSlash(item.relative))
+		path := item.path
 		if info, err := os.Stat(path); err == nil && (info.IsDir() && item.key != "FONTCONFIG_FILE" || info.Mode().IsRegular() && item.key == "FONTCONFIG_FILE") {
 			value := item.value
 			if value == "" {
@@ -151,7 +191,7 @@ func configure(root string, gtk bool) (func(), error) {
 		}
 	}
 	// The versioned gdk-pixbuf directory is part of GTK's on-disk ABI.
-	modules, err := filepath.Glob(filepath.Join(root, "lib", "gdk-pixbuf-2.0", "*", "loaders"))
+	modules, err := filepath.Glob(filepath.Join(libraries, "gdk-pixbuf-2.0", "*", "loaders"))
 	if err != nil {
 		return cleanup, err
 	}
@@ -171,9 +211,9 @@ func configure(root string, gtk bool) (func(), error) {
 		if runtime.GOOS == "windows" {
 			helper += ".exe"
 		}
-		query := filepath.Join(root, helper)
-		if _, err := os.Stat(query); os.IsNotExist(err) {
-			query = filepath.Join(root, "tools", "bin", helper)
+		query := filepath.Join(ToolDir(root), helper)
+		if _, err := os.Stat(query); os.IsNotExist(err) && !appLayout(root) {
+			query = filepath.Join(root, helper)
 		}
 		if _, err := os.Stat(query); os.IsNotExist(err) && item.key == "GTK_IM_MODULE_FILE" {
 			continue

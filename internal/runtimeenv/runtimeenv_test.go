@@ -40,6 +40,12 @@ func TestBundleRoot(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
+	for _, layout := range []string{"flat", "app"} {
+		t.Run(layout, func(t *testing.T) { testConfigure(t, layout == "app") })
+	}
+}
+
+func testConfigure(t *testing.T, app bool) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake query uses a POSIX script")
 	}
@@ -55,12 +61,17 @@ func TestConfigure(t *testing.T) {
 		t.Fatal("nonbundle bootstrap altered environment")
 	}
 	root := t.TempDir()
-	modules := filepath.Join(root, "lib", "gdk-pixbuf-2.0", "2.10.0", "loaders")
-	schemas := filepath.Join(root, "share", "glib-2.0", "schemas")
-	gtkPath := filepath.Join(root, "lib", "gtk-3.0")
-	gioPath := filepath.Join(root, "lib", "gio", "modules")
-	fonts := filepath.Join(root, "etc", "fonts")
-	for _, path := range []string{modules, schemas, gtkPath, gioPath, fonts, filepath.Join(root, "tools", "bin")} {
+	resources, libraries, tools := root, filepath.Join(root, "lib"), filepath.Join(root, "tools", "bin")
+	if app {
+		root = filepath.Join(root, "Kapila Burner.app", "Contents")
+		resources, libraries, tools = filepath.Join(root, "Resources"), filepath.Join(root, "Frameworks"), filepath.Join(root, "Helpers")
+	}
+	modules := filepath.Join(libraries, "gdk-pixbuf-2.0", "2.10.0", "loaders")
+	schemas := filepath.Join(resources, "share", "glib-2.0", "schemas")
+	gtkPath := filepath.Join(libraries, "gtk-3.0")
+	gioPath := filepath.Join(libraries, "gio", "modules")
+	fonts := filepath.Join(resources, "etc", "fonts")
+	for _, path := range []string{modules, schemas, gtkPath, gioPath, fonts, tools} {
 		if err := os.MkdirAll(path, 0700); err != nil {
 			t.Fatal(err)
 		}
@@ -69,10 +80,13 @@ func TestConfigure(t *testing.T) {
 		t.Fatal(err)
 	}
 	query := filepath.Join(root, "gdk-pixbuf-query-loaders")
+	if app {
+		query = filepath.Join(tools, "gdk-pixbuf-query-loaders")
+	}
 	if err := os.WriteFile(query, []byte("#!/bin/sh\nprintf '%s\\n' \"$GDK_PIXBUF_MODULEDIR/fake-loader.so\"\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	imQuery := filepath.Join(root, "tools", "bin", "gtk-query-immodules-3.0")
+	imQuery := filepath.Join(tools, "gtk-query-immodules-3.0")
 	if err := os.WriteFile(imQuery, []byte("#!/bin/sh\nprintf '%s\\n' \"$GTK_PATH/fake-im-module.so\"\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -93,10 +107,10 @@ func TestConfigure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cleanup()
-	if os.Getenv("PATH") != strings.Join([]string{root, filepath.Join(root, "tools", "bin"), "original"}, string(os.PathListSeparator)) || os.Getenv("GSETTINGS_SCHEMA_DIR") != schemas || os.Getenv("GDK_PIXBUF_MODULEDIR") != modules || os.Getenv("XDG_DATA_DIRS") != filepath.Join(root, "share")+string(os.PathListSeparator)+"original" {
+	if os.Getenv("PATH") != strings.Join([]string{root, tools, "original"}, string(os.PathListSeparator)) || os.Getenv("GSETTINGS_SCHEMA_DIR") != schemas || os.Getenv("GDK_PIXBUF_MODULEDIR") != modules || os.Getenv("XDG_DATA_DIRS") != filepath.Join(resources, "share")+string(os.PathListSeparator)+"original" {
 		t.Fatal("incorrect bundle environment")
 	}
-	for key, want := range map[string]string{"GTK_DATA_PREFIX": root, "GTK_EXE_PREFIX": root, "GTK_PATH": gtkPath, "GIO_MODULE_DIR": gioPath, "FONTCONFIG_PATH": fonts, "FONTCONFIG_FILE": filepath.Join(fonts, "fonts.conf")} {
+	for key, want := range map[string]string{"GTK_DATA_PREFIX": resources, "GTK_EXE_PREFIX": root, "GTK_PATH": gtkPath, "GIO_MODULE_DIR": gioPath, "FONTCONFIG_PATH": fonts, "FONTCONFIG_FILE": filepath.Join(fonts, "fonts.conf")} {
 		if got := os.Getenv(key); got != want {
 			t.Fatalf("%s = %q, want %q", key, got, want)
 		}

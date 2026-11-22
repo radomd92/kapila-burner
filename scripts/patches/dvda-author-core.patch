@@ -2,11 +2,14 @@ Core-build and native-header fixes; retain bundle path options in core mode.
 Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
 --- a/configure.ac
 +++ b/configure.ac
-@@ -52,4 +52,3 @@
+@@ -50,7 +50,6 @@
+ 		   WINLIBS=""])
+ 		  		  
  # probably spurious on most platforms yet useful on MSYS
 -CPPFLAGS="$CPPFLAGS -I/usr/include -I/usr/local/include"
  #default configuration
  #by default, link, do not build, and use Ogg FLAC:
+ FLAC_BUILD=no
 --- a/src/command_line_parsing.c
 +++ b/src/command_line_parsing.c
 @@ -271,6 +271,7 @@
@@ -41,7 +44,8 @@ Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
          }
      }
  
-@@ -1245,6 +1247,16 @@
+@@ -1244,6 +1246,16 @@
+           textable = fn_strtok(optarg, ',', textable, &globals->textablesize,
                                 0, NULL, NULL, globals);
            break;
 +#if defined HAVE_core_BUILD && HAVE_core_BUILD
@@ -57,20 +61,23 @@ Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
  #if !defined HAVE_core_BUILD || !HAVE_core_BUILD
  
          case '9':
-           /* --datadir is the directory where the menu/ files are
 --- a/src/launch_manager.c
 +++ b/src/launch_manager.c
-@@ -102,7 +102,7 @@
+@@ -99,7 +99,7 @@
+     sectors.stillvob=0;
+     memset(sectors.atsi, 0, sizeof(sectors.atsi));
+ 
 -    uint8_t pathlength=strlen(globals->settings.outdir);
 +    size_t pathlength=strlen(globals->settings.outdir);
  
      char audiotsdir[pathlength+10];
      char videotsdir[pathlength+10];
+@@ -108,7 +108,7 @@
  
-     sprintf(audiotsdir, "%s"SEPARATOR"AUDIO_TS", globals->settings.outdir);
- 
-@@ -111,3 +111,3 @@
+     if (!globals->nooutput) secure_mkdir(audiotsdir, globals->access_rights, globals);
+     errno=0;
 -    STRING_WRITE_CHAR_BUFSIZ(videotsdir, "%s"SEPARATOR"VIDEO_TS", globals->settings.outdir)
 +    snprintf(videotsdir, sizeof(videotsdir), "%s"SEPARATOR"VIDEO_TS", globals->settings.outdir);
      if (globals->videozone && !globals->nooutput) secure_mkdir(videotsdir, globals->access_rights, globals);
          errno=0;
+ 

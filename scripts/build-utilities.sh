@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Native prerequisites:
-# macOS Intel: Xcode CLI tools; brew install bash make autoconf automake libtool
+# macOS Intel: Xcode CLI tools; brew install bash make autoconf automake libtool gpatch
 #              pkg-config libpng zlib libcdio popt
 # Windows: MSYS2 MINGW64 shell, MSYS bash/make/autoconf/automake/libtool/patch,
 #          mingw-w64-x86_64-{gcc,pkgconf,libpng,zlib,libcdio,popt}.
@@ -9,6 +9,8 @@
 # The packaging layer owns non-system DLL/dylib closure and its corresponding sources.
 # Offline rebuild: run the distributed SOURCE-ARCHIVES/build-utilities.sh with
 # UTILITY_OFFLINE=1. UTILITY_SOURCE_DIR can override its sibling archive directory.
+# UTILITY_BUILD_ROOT is a base cache: downloads/ is shared, while recipe-<SHA256>/
+# isolates extracted sources, patch markers and build outputs by build inputs.
 set -euo pipefail
 export LC_ALL=C
 scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -16,13 +18,14 @@ if [[ $# != 1 || -z $1 ]]; then
     printf 'Usage: bash scripts/build-utilities.sh STAGE\n' >&2
     exit 2
 fi
+patchcmd=patch
 case $(uname -s) in
     MINGW64*|MSYS*|MINGW_NT*)
         [[ ${MSYSTEM:-} == MINGW64 ]] || { printf 'Use the MSYS2 MINGW64 shell.\n' >&2; exit 1; }
         platform=WindowsMINGW64; exe=.exe; compiler=gcc ;;
     Darwin)
         [[ $(uname -m) == x86_64 ]] || { printf 'A native Intel macOS build is required.\n' >&2; exit 1; }
-        platform=macOSIntel; exe=; compiler=clang
+        platform=macOSIntel; exe=; compiler=clang; patchcmd=gpatch
         for dep in libpng zlib libcdio popt; do
             prefix=$(brew --prefix "$dep")
             export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
@@ -32,7 +35,7 @@ case $(uname -s) in
 esac
 make=${MAKE:-make}
 if [[ $platform == macOSIntel ]]; then make=${MAKE:-gmake}; fi
-for tool in "$make" "$compiler" curl tar patch autoconf autoheader pkg-config; do
+for tool in "$make" "$compiler" curl tar "$patchcmd" autoconf autoheader pkg-config; do
     command -v "$tool" >/dev/null || { printf 'Missing prerequisite: %s\n' "$tool" >&2; exit 1; }
 done
 triplet=$("$compiler" -dumpmachine)
@@ -44,22 +47,44 @@ else
 fi
 mkdir -p "$1"
 stage=$(cd "$1" && pwd)
-work=${UTILITY_BUILD_ROOT:-${TMPDIR:-/tmp}/dvd-audio-utilities-$platform}
-mkdir -p "$work"
-work=$(cd "$work" && pwd)
+basework=${UTILITY_BUILD_ROOT:-${TMPDIR:-/tmp}/dvd-audio-utilities-$platform}
+mkdir -p "$basework"
+basework=$(cd "$basework" && pwd)
 # Legacy makefiles interpolate paths without quoting. Fail early rather than
 # silently mixing MSYS headers with native headers or building in a broken path.
-if [[ $work == *[[:space:]]* || $stage == *[[:space:]]* ]]; then
+if [[ $basework == *[[:space:]]* || $stage == *[[:space:]]* ]]; then
     printf 'Utility build and staging paths must not contain whitespace.\n' >&2
     exit 1
 fi
 jobs=${UTILITY_JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf 2)}
 [[ $jobs =~ ^[1-9][0-9]*$ ]] || { printf 'Invalid UTILITY_JOBS\n' >&2; exit 1; }
-mkdir -p "$work/downloads" "$work/src" "$stage/tools/bin" \
+compiler_version=$("$compiler" --version)
+make_version=$("$make" --version)
+patch_version=$("$patchcmd" --version)
+dependency_versions=$(pkg-config --modversion libpng zlib libcdio libiso9660 popt)
+recipe=$({
+    printf '%s\n' "$platform" "$triplet" "$(uname -m)" "$(command -v "$compiler")" \
+        "$compiler_version" "$make_version" "$patch_version" "$dependency_versions"
+    printf '%s\n' "CFLAGS=${CFLAGS:-}" "CPPFLAGS=${CPPFLAGS:-}" "CXXFLAGS=${CXXFLAGS:-}" \
+        "LDFLAGS=${LDFLAGS:-}" "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-}" \
+        "PKG_CONFIG_LIBDIR=${PKG_CONFIG_LIBDIR:-}" "SDKROOT=${SDKROOT:-}" \
+        "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-}"
+    # Hash content and relative names, not checkout locations or file timestamps.
+    for input in utility-sources.tsv build-utilities.sh patches/dvda-author-core.patch; do
+        input_hash=$(sha256 "$scripts/$input") || exit 1
+        printf '%s\n%s\n' "$input" "${input_hash%% *}"
+    done
+} | sha256 -)
+recipe=${recipe%% *}
+work="$basework/recipe-$recipe"
+downloads="$basework/downloads"
+mkdir -p "$downloads" "$work/src" "$stage/tools/bin" \
     "$stage/tools/share/dvda-author" "$stage/tools/share/licenses" "$stage/SOURCE-ARCHIVES"
 exec > >(tee "$work/build.log") 2>&1
 trap 'printf "Utility build failed at line %s. Log: %s/build.log\n" "$LINENO" "$work" >&2' ERR
 printf 'Building native utilities: %s, %s jobs\n' "$platform" "$jobs"
+printf 'Recipe SHA-256: %s\nRecipe work directory: %s\nShared downloads: %s\n' "$recipe" "$work" "$downloads"
+printf 'Patch command: %s\n' "$patchcmd"
 source_dir=$(cd "${UTILITY_SOURCE_DIR:-$scripts}" && pwd)
 manifest=$(mktemp "$work/distribution-manifest.XXXXXX")
 printf '# name archive sha256 URL license\n' > "$manifest"
@@ -67,7 +92,7 @@ printf '# dvda-author is normalized original source, without unused vendored dep
 printf '# Original upstream URL/SHA-256: utility-sources.upstream.tsv. Local archives support offline rebuilding.\n' >> "$manifest"
 while read -r name archive digest url license; do
     [[ -n $name && $name != \#* ]] || continue
-    file="$work/downloads/$archive"
+    file="$downloads/$archive"
     if [[ -f $source_dir/$archive ]]; then file="$source_dir/$archive"; fi
     if [[ ! -f $file ]]; then
         if [[ ${UTILITY_OFFLINE:-0} == 1 || $url == local:* ]]; then
@@ -106,12 +131,12 @@ while read -r name archive digest url license; do
             *bsdtar*) tarflags+=(--uid=0 --gid=0 --uname=root --gname=root) ;;
         esac
         tar "${tarflags[@]}" -cf - -C "$pristine" -T "$pristine/normalized-members" \
-            | gzip -n > "$work/downloads/dvda-author-source.tar.gz.part"
-        mv "$work/downloads/dvda-author-source.tar.gz.part" "$work/downloads/dvda-author-source.tar.gz"
+            | gzip -n > "$work/dvda-author-source.tar.gz.part"
+        mv "$work/dvda-author-source.tar.gz.part" "$work/dvda-author-source.tar.gz"
         rm -rf "$pristine"
         rm -f "$stage/SOURCE-ARCHIVES/$archive"
         archive=dvda-author-source.tar.gz
-        file="$work/downloads/$archive"
+        file="$work/$archive"
         digest=$(sha256 "$file"); digest=${digest%% *}
         url="local:$archive"
     fi
@@ -140,7 +165,7 @@ avprefix="$dvda/local"
 (
     cd "$dvda"
     if [[ ! -f .utility-patched ]]; then
-        patch -p1 < "$scripts/patches/dvda-author-core.patch"
+        "$patchcmd" --batch --fuzz=0 -p1 < "$scripts/patches/dvda-author-core.patch"
         touch .utility-patched
     fi
     if command -v glibtoolize >/dev/null; then glibtoolize --copy --force --install
@@ -243,7 +268,9 @@ test -s "$smoke/vcd.bin"
 test -s "$smoke/vcd.cue"
 {
     printf 'Platform: %s\nCompiler: %s\n' "$platform" "$compiler"
+    printf 'Recipe SHA-256: %s\nRecipe work directory: %s\n' "$recipe" "$work"
     "$compiler" --version
+    "$patchcmd" --version
     printf '\nNative dependency versions (packaging must retain their sources):\n'
     for dep in libpng zlib libcdio libiso9660 popt; do
         printf '%s: %s\n' "$dep" "$(pkg-config --modversion "$dep")"
@@ -260,6 +287,8 @@ test -s "$smoke/vcd.cue"
     printf 'Source archives, hashes, patches and rebuild script: SOURCE-ARCHIVES/.\n'
     printf 'Offline rebuild: UTILITY_OFFLINE=1 bash SOURCE-ARCHIVES/build-utilities.sh NEW_STAGE\n'
     printf 'UTILITY_SOURCE_DIR overrides the archive lookup directory. Native prerequisites are still required.\n'
+    printf 'UTILITY_BUILD_ROOT selects the base cache; downloads/ is shared and verified on every run.\n'
+    printf 'recipe-<SHA256>/ isolates sources and build outputs by manifest, builder, patch and native build inputs.\n'
     printf 'dvda-author-source.tar.gz contains unpatched original core sources and build inputs;\n'
     printf 'unused vendored dependencies and binary payloads are omitted. Upstream provenance: utility-sources.upstream.tsv.\n'
     printf 'DVD-Audio tree + true -dvd-audio ISO and PAL VCD BIN/CUE smoke: PASS\n'
