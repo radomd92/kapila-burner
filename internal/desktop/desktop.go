@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -81,9 +82,22 @@ type app struct {
 	recorderRevision                                             uint64
 	quitAfterJob                                                 bool
 	smokeMode                                                    bool
+	dialogResponder                                              func(*gtk.Dialog)
 }
 
+var gtkFinalizers sync.Once
+
 func Run(engine *core.Engine, options Options) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	gtkFinalizers.Do(func() {
+		// gotk3 otherwise unrefs GTK objects on Go's finalizer goroutine.
+		// Keep this strategy installed after Main exits: late finalizers must
+		// never fall back to destroying native UI objects off-thread.
+		glib.FinalizerStrategy = func(f glib.Finalizer) {
+			glib.IdleAdd(func() { f() })
+		}
+	})
 	if options.Language != "en" && options.Language != "fr" && options.Language != "plt" {
 		options.Language = "plt"
 	}
@@ -439,14 +453,35 @@ func (a *app) confirm(text string) bool {
 	d.AddButton(a.t("No", "Tsia"), gtk.RESPONSE_NO)
 	d.AddButton(a.t("Yes", "Eny"), gtk.RESPONSE_YES)
 	d.SetDefaultResponse(gtk.RESPONSE_NO)
-	defer d.Destroy()
-	return d.Run() == gtk.RESPONSE_YES
+	defer a.destroyDialog(&d.Dialog)
+	return a.runDialog(&d.Dialog) == gtk.RESPONSE_YES
 }
+
+// runDialog and destroyDialog must be called on the GTK thread. Keep the Go
+// owners alive as well as the native modal reference held by gtk_dialog_run.
+func (a *app) runDialog(d *gtk.Dialog) gtk.ResponseType {
+	d.ShowAll()
+	if a.dialogResponder != nil {
+		a.dialogResponder(d)
+	}
+	response := d.Run()
+	d.Hide()
+	runtime.KeepAlive(d)
+	runtime.KeepAlive(a.window)
+	return response
+}
+
+func (a *app) destroyDialog(d *gtk.Dialog) {
+	d.Destroy()
+	runtime.KeepAlive(d)
+	runtime.KeepAlive(a.window)
+}
+
 func (a *app) error(err error) {
 	d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_NONE, "%s", errorText(a.lang, err))
 	d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
-	d.Run()
-	d.Destroy()
+	defer a.destroyDialog(&d.Dialog)
+	a.runDialog(&d.Dialog)
 }
 
 func (a *app) loadWidgets() {
@@ -870,8 +905,8 @@ func (a *app) showTools() {
 	d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("External Tools", "Fitaovana ivelany"))
 	d.FormatSecondaryText("%s", details)
 	d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
-	defer d.Destroy()
-	d.Run()
+	defer a.destroyDialog(&d.Dialog)
+	a.runDialog(&d.Dialog)
 }
 func (a *app) setLanguage(lang string) {
 	if lang != "en" && lang != "plt" && lang != "fr" {
@@ -1005,7 +1040,7 @@ func (a *app) chooseProject(save bool) bool {
 		a.error(err)
 		return false
 	}
-	defer d.Destroy()
+	defer a.destroyDialog(&d.Dialog)
 	f, _ := gtk.FileFilterNew()
 	f.SetName(a.t("Project JSON (*.json)", "Tetikasa JSON (*.json)"))
 	f.AddPattern("*.json")
@@ -1014,7 +1049,7 @@ func (a *app) chooseProject(save bool) bool {
 		d.SetCurrentName(a.t("project.json", "tetikasa.json"))
 		d.SetDoOverwriteConfirmation(true)
 	}
-	if d.Run() != gtk.RESPONSE_ACCEPT {
+	if a.runDialog(&d.Dialog) != gtk.RESPONSE_ACCEPT {
 		return false
 	}
 	path := d.GetFilename()
@@ -1086,20 +1121,31 @@ func (a *app) smoke() {
 	a.estimate = nil
 	a.lastJob = nil
 	a.showEstimate()
-	for _, lang := range []string{"en", "fr", "plt"} {
-		a.language.SetActiveID(lang)
-		// Respond on the nested modal main loop, never touching a drive.
-		respond := func(response gtk.ResponseType) {
+	// Schedule typed responses against the actual dialog on its nested GTK
+	// loop, never enumerating/wrapping unrelated native top-level windows.
+	dialogResponses := 0
+	respond := func(response gtk.ResponseType) {
+		if a.dialogResponder != nil {
+			a.smokeError = fmt.Errorf("GTK smoke previous dialog responder was not consumed")
+		}
+		a.dialogResponder = func(d *gtk.Dialog) {
+			a.dialogResponder = nil
 			glib.TimeoutAdd(50, func() bool {
-				gtk.WindowListToplevels().Foreach(func(value interface{}) {
-					w := value.(*gtk.Window)
-					if w.GetVisible() && w.GetModal() {
-						w.Emit("response", glib.TYPE_NONE, int(response))
-					}
-				})
+				if !d.GetVisible() || !d.GetModal() {
+					a.smokeError = fmt.Errorf("GTK smoke responder received a hidden or nonmodal dialog")
+				}
+				// Exercise wrapper finalizers while the real modal loop is live.
+				runtime.GC()
+				d.Response(response)
+				runtime.KeepAlive(d)
+				dialogResponses++
 				return false
 			})
 		}
+	}
+	defer func() { a.dialogResponder = nil }()
+	for _, lang := range []string{"en", "fr", "plt"} {
+		a.language.SetActiveID(lang)
 		respond(gtk.RESPONSE_CLOSE)
 		a.actions["about"].Activate()
 		status, _ := a.tools.GetText()
@@ -1111,6 +1157,10 @@ func (a *app) smoke() {
 		respond(gtk.RESPONSE_NO)
 		if a.confirm(a.t("Delete this group and its track list? Source files will not be changed.", "Hafafa ity vondrona sy lisitry ny raki-peo ity? Tsy ovaina ny rakitra niaviany.")) {
 			a.smokeError = fmt.Errorf("GTK smoke confirmation response failed")
+		}
+		respond(gtk.RESPONSE_DELETE_EVENT)
+		if a.confirm("Smoke: closing a confirmation must not authorize an action") {
+			a.smokeError = fmt.Errorf("GTK smoke closed confirmation authorized an action")
 		}
 		respond(gtk.RESPONSE_CLOSE)
 		a.error(fmt.Errorf("empty track path"))
@@ -1169,23 +1219,11 @@ func (a *app) smoke() {
 		a.smokeError = fmt.Errorf("GTK smoke language dirtied project")
 	}
 	a.name.SetText("Saved smoke project")
-	// Respond to the real modal prompt on its nested GTK main loop.
-	respond := func(response gtk.ResponseType) {
-		glib.TimeoutAdd(50, func() bool {
-			windows := gtk.WindowListToplevels()
-			windows.Foreach(func(value interface{}) {
-				w := value.(*gtk.Window)
-				title, _ := w.GetTitle()
-				if title == a.t("Unsaved Project", "Tetikasa tsy voatahiry") {
-					w.Emit("response", glib.TYPE_NONE, int(response))
-				}
-			})
-			return false
-		})
-	}
+	beforeCancel := cloneProject(a.project)
+	revisionBeforeCancel := a.revision
 	respond(gtk.RESPONSE_CANCEL)
 	a.actions["close"].Activate()
-	if !a.active || !a.dirty {
+	if !a.active || !a.dirty || !reflect.DeepEqual(a.project, beforeCancel) || a.projectPath != path || a.revision != revisionBeforeCancel {
 		a.smokeError = fmt.Errorf("GTK smoke cancel discarded document")
 	}
 	respond(gtk.RESPONSE_ACCEPT)
@@ -1199,6 +1237,9 @@ func (a *app) smoke() {
 	a.name.SetText("Discarded")
 	respond(gtk.RESPONSE_REJECT)
 	a.actions["new-vcd"].Activate()
+	if dialogResponses != 18 || a.dialogResponder != nil {
+		a.smokeError = fmt.Errorf("GTK smoke modal response coverage failed: %d responses", dialogResponses)
+	}
 	if a.project.Format != "vcd" || a.project.Capacity != "cd80" || a.project.VideoStandard != "pal" || len(a.project.Groups) != 1 || !a.dirty || a.actions["group-add"].GetSensitive() {
 		a.smokeError = fmt.Errorf("GTK smoke VCD creation failed")
 	}

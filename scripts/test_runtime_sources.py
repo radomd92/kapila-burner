@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -22,6 +23,10 @@ spec.loader.exec_module(sources)
 
 
 class RuntimeSourcesTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tar = sources.gnu_tar()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -276,10 +281,91 @@ class RuntimeSourcesTests(unittest.TestCase):
         with self.assertRaisesRegex(sources.CollectionError, "inventory mismatch"):
             sources.windows_packages(self.stage)
 
+    def test_gnu_tar_uses_explicit_path_from_which_outside_windows(self):
+        with patch.object(sources.sys, "platform", "linux"), patch.object(
+                sources.shutil, "which", return_value=self.tar) as which:
+            self.assertEqual(sources.gnu_tar(), self.tar)
+        which.assert_called_once_with("tar")
+        self.assertTrue(Path(shutil.which("tar")).is_absolute())
+
+    def test_native_windows_collection_never_uses_system32_tar(self):
+        self.windows_stage()
+        archive = self.make_source_package()
+        native_tar = r"C:\msys64\usr\bin\tar.exe"
+        system_tar = r"C:\Windows\System32\tar.exe"
+        real_run = sources.run
+        for msystem in ("MINGW64", ""):
+            commands = []
+
+            def which(name):
+                if name == "pacman-conf":
+                    return r"C:\msys64\usr\bin\pacman-conf.exe"
+                self.fail(f"Implicit executable lookup forbidden: {name} ({system_tar})")
+
+            def run(*args, env=None):
+                commands.append(args)
+                if args == ("cygpath", "-w", "/usr/bin/tar.exe"):
+                    return native_tar + "\n"
+                self.assertEqual(args[0], native_tar)
+                return real_run(self.tar, *args[1:])
+
+            def download(url, target):
+                target.write_bytes(archive.read_bytes())
+
+            output = self.output / (msystem or "pacman-root")
+            output.mkdir()
+            with self.subTest(msystem=msystem), patch.object(
+                    sources.sys, "platform", "win32"), patch.dict(
+                    os.environ, {"MSYSTEM": msystem}), patch.object(
+                    sources.shutil, "which", side_effect=which), patch.object(
+                    sources, "run", side_effect=run), patch.object(
+                    sources, "installed_pkgbase", return_value="mingw-w64-glib2"), patch.object(
+                    sources, "download", side_effect=download), patch("builtins.print") as log:
+                sources.collect_windows(self.stage, output, self.scratch)
+            tar_calls = [args for args in commands if args[0] == native_tar]
+            self.assertEqual(tar_calls[0], (native_tar, "--version"))
+            self.assertEqual(len(tar_calls), 4)
+            self.assertEqual([args[2] for args in tar_calls[1:]], ["-tf", "-xOf", "-xOf"])
+            self.assertTrue(all(args[1] == "--force-local" for args in tar_calls[1:]))
+            diagnostics = [call.args[0] for call in log.call_args_list
+                           if call.args[0].startswith("MSYS2 source archive tool:")]
+            self.assertEqual(len(diagnostics), 1)
+            self.assertIn(native_tar, diagnostics[0])
+            self.assertIn("GNU tar", diagnostics[0])
+            self.assert_hashes(output)
+
+    def test_native_windows_archive_drive_path_is_passed_with_force_local(self):
+        archive = self.make_source_package()
+        native_archive = r"D:\a\_temp\runtime-source-cache-test\package.src.tar.gz"
+        native_tar = r"C:\msys64\usr\bin\tar.exe"
+        real_run = sources.run
+        commands = []
+
+        def run(*args, env=None):
+            commands.append(args)
+            self.assertEqual(args[:2], (native_tar, "--force-local"))
+            self.assertEqual(args[3], native_archive)
+            return real_run(self.tar, *args[1:3], str(archive), *args[4:])
+
+        with patch.object(sources, "run", side_effect=run):
+            sources.validate_source_package(native_archive, "mingw-w64-glib2", "2.86.3-1",
+                                            self.output / "recipe", native_tar)
+        self.assertEqual(len(commands), 3)
+
+    def test_non_gnu_tar_is_rejected_before_download(self):
+        self.windows_stage()
+        with patch.object(sources.sys, "platform", "win32"), patch.dict(
+                os.environ, {"MSYSTEM": "MINGW64"}), patch.object(
+                sources, "run", side_effect=[r"C:\msys64\usr\bin\tar.exe", "bsdtar 3.7.2\n"]), patch.object(
+                sources, "download") as download:
+            with self.assertRaisesRegex(sources.CollectionError, "Expected GNU tar"):
+                sources.collect_windows(self.stage, self.output, self.scratch)
+        download.assert_not_called()
+
     def test_exact_allsource_package_validation(self):
         archive = self.make_source_package()
         fields = sources.validate_source_package(archive, "mingw-w64-glib2", "2.86.3-1",
-                                                self.output / "recipe")
+                                                self.output / "recipe", self.tar)
         self.assertEqual(fields["pkgver"], ["2.86.3"])
         self.assertTrue((self.output / "recipe/PKGBUILD").is_file())
 
@@ -287,12 +373,12 @@ class RuntimeSourcesTests(unittest.TestCase):
         for base, version in (("mingw-w64-glib2", "2.86.2-1"), ("other", "2.86.3-1")):
             with self.subTest(base=base, version=version), self.assertRaises(sources.CollectionError):
                 sources.validate_source_package(self.make_source_package(), base, version,
-                                                self.output / "recipe")
+                                                self.output / "recipe", self.tar)
 
     def test_source_package_missing_upstream_source_fails(self):
         with self.assertRaisesRegex(sources.CollectionError, "missing declared source"):
             sources.validate_source_package(self.make_source_package(omit_source=True),
-                                            "mingw-w64-glib2", "2.86.3-1", self.output / "recipe")
+                                            "mingw-w64-glib2", "2.86.3-1", self.output / "recipe", self.tar)
 
     def test_windows_downloads_complete_archive_and_preserves_hashes(self):
         self.windows_stage()

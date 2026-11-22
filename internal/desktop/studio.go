@@ -131,8 +131,8 @@ func (a *app) construct() {
 	item(h, "about", "About kapila-maker", "Momba ny kapila-maker", "", func() {
 		d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("kapila-maker\nNative DVD-Audio & Video CD authoring\n\nDVD: lossless PCM for DVD-Audio players.\nVCD: MPEG-1 video + MP2 sound; audio uses a black picture.\nCreate an image first. Burning always requires confirmation.\nSource files are never modified.", "kapila-maker\nFanamboarana DVD-Audio sy Video CD\n\nDVD: PCM tsy very kalitao ho an'ny mpamaky DVD-Audio.\nVCD: MPEG-1 sy MP2; sary mainty ho an'ny feo.\nMamorona sary kapila aloha. Mila fanekena ny fandoroana.\nTsy ovaina ny rakitra niaviany."))
 		d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
-		d.Run()
-		d.Destroy()
+		defer a.destroyDialog(&d.Dialog)
+		a.runDialog(&d.Dialog)
 	})
 	toolbar := box(false, 4)
 	toolbar.SetBorderWidth(8)
@@ -374,8 +374,8 @@ func (a *app) mayLeave() bool {
 	d.AddButton(a.t("Discard", "Aza tehirizina"), gtk.RESPONSE_REJECT)
 	d.AddButton(a.t("Save", "Tehirizo"), gtk.RESPONSE_ACCEPT)
 	d.SetDefaultResponse(gtk.RESPONSE_CANCEL)
-	r := d.Run()
-	d.Destroy()
+	r := a.runDialog(&d.Dialog)
+	a.destroyDialog(&d.Dialog)
 	return r == gtk.RESPONSE_REJECT || (r == gtk.RESPONSE_ACCEPT && a.save())
 }
 
@@ -498,12 +498,11 @@ func (a *app) burn() {
 	content.PackStart(speed, false, false, 0)
 	dummy, _ := gtk.CheckButtonNewWithLabel(a.t("Dummy mode (drive simulation, if supported)", "Fomba fitsapana (raha zakan'ny mpanoratra kapila)"))
 	content.PackStart(dummy, false, false, 0)
-	d.ShowAll()
-	r := d.Run()
+	r := a.runDialog(d)
 	device := recorders.GetActiveID()
 	selectedSpeed := speed.GetActiveID()
 	simulate := dummy.GetActive()
-	d.Destroy()
+	a.destroyDialog(d)
 	if r != gtk.RESPONSE_ACCEPT {
 		return
 	}

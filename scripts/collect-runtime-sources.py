@@ -11,7 +11,7 @@ import csv
 import hashlib
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import shutil
 import subprocess
@@ -280,17 +280,40 @@ def srcinfo_fields(text):
     return fields
 
 
-def validate_source_package(archive, base, version, metadata_dir):
+def gnu_tar():
+    if sys.platform == "win32":
+        if os.environ.get("MSYSTEM"):
+            tar = run("cygpath", "-w", "/usr/bin/tar.exe").strip()
+        else:
+            pacman = shutil.which("pacman-conf")
+            if not pacman or not PureWindowsPath(pacman).is_absolute():
+                raise CollectionError("Cannot locate MSYS2 GNU tar from pacman-conf")
+            tar = str(PureWindowsPath(pacman).with_name("tar.exe"))
+        if not PureWindowsPath(tar).is_absolute():
+            raise CollectionError(f"MSYS2 GNU tar path is not absolute: {tar!r}")
+    else:
+        tar = shutil.which("tar")
+        if not tar:
+            raise CollectionError("GNU tar is required to validate MSYS2 source packages")
+        tar = os.path.abspath(tar)
+    version = run(tar, "--version").splitlines()
+    if not version or not version[0].startswith("tar (GNU tar) "):
+        raise CollectionError(f"Expected GNU tar at {tar}, got: {version[:1]}")
+    print(f"MSYS2 source archive tool: {tar} ({version[0]})", flush=True)
+    return tar
+
+
+def validate_source_package(archive, base, version, metadata_dir, tar):
     # tar reads individual members to stdout only. No archive path is extracted.
     # GNU/MSYS2 tar must not treat a native Windows drive letter as a remote host.
-    members = run("tar", "--force-local", "-tf", str(archive)).splitlines()
+    members = run(tar, "--force-local", "-tf", str(archive)).splitlines()
     if any(PurePosixPath(p).is_absolute() or ".." in PurePosixPath(p).parts for p in members):
         raise CollectionError(f"Unsafe source package paths: {archive.name}")
     prefix = base + "/"
     for name in (".SRCINFO", "PKGBUILD"):
         if members.count(prefix + name) != 1:
             raise CollectionError(f"Source package lacks unique {prefix + name}")
-    text = run("tar", "--force-local", "-xOf", str(archive), prefix + ".SRCINFO")
+    text = run(tar, "--force-local", "-xOf", str(archive), prefix + ".SRCINFO")
     fields = srcinfo_fields(text)
     try:
         available = fields["pkgver"][0] + "-" + fields["pkgrel"][0]
@@ -318,12 +341,13 @@ def validate_source_package(archive, base, version, metadata_dir):
     metadata_dir.mkdir(parents=True)
     (metadata_dir / ".SRCINFO").write_text(text, encoding="utf-8")
     (metadata_dir / "PKGBUILD").write_text(
-        run("tar", "--force-local", "-xOf", str(archive), prefix + "PKGBUILD"), encoding="utf-8")
+        run(tar, "--force-local", "-xOf", str(archive), prefix + "PKGBUILD"), encoding="utf-8")
     return fields
 
 
 def collect_windows(stage, output, scratch):
     packages = windows_packages(stage)
+    tar = gnu_tar()
     groups = {}
     for name, version in packages.items():
         base = installed_pkgbase(name, version)
@@ -349,7 +373,7 @@ def collect_windows(stage, output, scratch):
             raise CollectionError(f"Exact MSYS2 all-source package unavailable: {base} {version}; "
                                   "release blocked (no current-recipe substitution)")
         metadata_dir = output / "recipes" / f"{base}-{filename_version}"
-        fields = validate_source_package(archive, base, version, metadata_dir)
+        fields = validate_source_package(archive, base, version, metadata_dir, tar)
         target = output / "archives" / archive.name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(archive, target)
