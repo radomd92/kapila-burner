@@ -22,7 +22,7 @@ macOS 15 or newer, Intel x86-64:
   Gatekeeper/organization policy; do not disable system-wide security protections.
 - No Apple Silicon native build is claimed.
 
-Linux x86-64:
+Linux x86-64 and ARM64:
 - The release is built on Ubuntu 22.04 and requires a compatible glibc system.
 - Extract the entire archive and run ./kapila-maker or ./kapila-maker-web.
   Keep tools/ and BUILD-UTILITIES.txt beside the executables.
@@ -33,9 +33,22 @@ Linux x86-64:
   On Ubuntu 24.04 / Linux Mint 22: libgtk-3-0t64 (desktop),
   libcdio19t64 libiso9660-11t64 libpopt0 (VCD).
 - Install cdrdao separately only if you want physical VCD burning.
+- On Raspberry Pi, use the ARM64 archive with 64-bit Raspberry Pi OS
+  (Bookworm or newer). The Bookworm runtime packages match the Ubuntu 22.04
+  names above. On Raspberry Pi OS Trixie, use libgtk-3-0t64 for GTK. For VCD,
+  install the system vcdimager package and launch with VCDIMAGER=/usr/bin/vcdimager
+  because the bundled executable uses the older library ABI. No 32-bit Pi build.
 
-Packaged apps find tools relative to their executable, not the working
-directory. Defaults: user Music library and kapila-maker/output in the per-user cache.
+Linux RISC-V (riscv64, not for Raspberry Pi):
+- Built for Debian 13 (Trixie) or a compatible distribution; tools are not bundled.
+- Install libgtk-3-0t64 for GTK and ffmpeg, vcdimager, dvdauthor, genisoimage
+  for VCD and DVD-Video authoring. DVD-Audio requires separate compatible
+  builds of dvda-author and, for ISOs, mkisofs with -dvd-audio support.
+- Launch with -root and -output, or use the working-directory defaults of
+  .. and ./output. Utilities are resolved from PATH or explicit overrides.
+
+Bundles with utilities find them relative to their executable. Defaults for
+those bundles: user Music library and kapila-maker/output in the per-user cache.
 Pass -root /path/to/media and -output /path/to/output to override them.
 In GTK, open a project and click Scan Folder to scan the selected directory.
 External Tools shows dependency status and opens paths and diagnostics.
@@ -61,8 +74,8 @@ Only Linux supports optional, explicitly confirmed physical VCD writing with
 cdrdao. Use external recording software for DVD ISOs and for VCD BIN/CUE
 images on Windows/macOS. No CI job burns a disc.
 
-Corresponding utility/runtime sources and patches are published beside these
-downloads in the matching -sources.tar.gz archive. Keep license notices intact.
+For bundles with utilities, corresponding utility/runtime sources and patches
+are published in matching -sources.tar.gz archives. Keep license notices intact.
 SHA256SUMS covers installers, portable distributions and corresponding sources.
 Read BUILD-UTILITIES.txt and platform runtime manifests or Linux linkage reports
 for build and shared library details.

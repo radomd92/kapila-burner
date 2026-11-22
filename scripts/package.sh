@@ -83,17 +83,40 @@ case "$os" in
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
   linux)
-    bash scripts/build-utilities.sh "$package"
     ldd "$package/kapila-maker" > "$package/GTK-LINKAGE.txt"
-    ldd "$package/tools/bin/"{ffmpeg,ffprobe,vcdimager,dvda-author,mkisofs} > "$package/UTILITY-LINKAGE.txt"
-    if grep -H 'not found' "$package/GTK-LINKAGE.txt" "$package/UTILITY-LINKAGE.txt" >&2; then
+    linkage=("$package/GTK-LINKAGE.txt")
+    binaries=("$package/kapila-maker" "$package/kapila-maker-web")
+    # Pinned Schilytools lacks RISC-V support. Ship the apps with system tools.
+    if [[ $arch != riscv64 ]]; then
+      bash scripts/build-utilities.sh "$package"
+      tools=("$package/tools/bin/"{ffmpeg,ffprobe,vcdimager,dvda-author,mkisofs})
+      binaries+=("${tools[@]}")
+      ldd "${tools[@]}" > "$package/UTILITY-LINKAGE.txt"
+      linkage+=("$package/UTILITY-LINKAGE.txt")
+    fi
+    if grep -H 'not found' "${linkage[@]}" >&2; then
       printf 'Missing Linux runtime library\n' >&2
       exit 1
     fi
+    case "$arch" in
+      amd64) machine='Advanced Micro Devices X86-64' ;;
+      arm64) machine='AArch64' ;;
+      riscv64) machine='RISC-V' ;;
+      *) printf 'Unsupported Linux packaging architecture: %s\n' "$arch" >&2; exit 1 ;;
+    esac
+    for binary in "${binaries[@]}"; do
+      header=$(LC_ALL=C readelf -h "$binary")
+      if ! grep -Eq "Machine:[[:space:]]+$machine$" <<< "$header"; then
+        printf 'Unexpected ELF architecture: %s (expected %s)\n' "$binary" "$machine" >&2
+        exit 1
+      fi
+    done
     "$package/kapila-maker" -h
-    tar -czf "dist/$name-sources.tar.gz" -C "$package" SOURCE-ARCHIVES THIRD-PARTY-LICENSES \
-      tools/share/licenses BUILD-UTILITIES.txt GTK-LINKAGE.txt UTILITY-LINKAGE.txt
-    rm -rf -- "$package/SOURCE-ARCHIVES"
+    if [[ $arch != riscv64 ]]; then
+      tar -czf "dist/$name-sources.tar.gz" -C "$package" SOURCE-ARCHIVES THIRD-PARTY-LICENSES \
+        tools/share/licenses BUILD-UTILITIES.txt GTK-LINKAGE.txt UTILITY-LINKAGE.txt
+      rm -rf -- "$package/SOURCE-ARCHIVES"
+    fi
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
 esac

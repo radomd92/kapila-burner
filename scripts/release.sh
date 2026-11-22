@@ -7,11 +7,14 @@ cd "$(dirname "$0")/.."
 : "${GITHUB_REF:?GitHub ref is required}"
 assets=(
   kapila-maker-linux-amd64.tar.gz
+  kapila-maker-linux-arm64.tar.gz
+  kapila-maker-linux-riscv64.tar.gz
   kapila-maker-windows-amd64.zip
   kapila-maker-macos-amd64.tar.gz
   kapila-maker-windows-amd64-setup.exe
   kapila-maker-macos-amd64.dmg
   kapila-maker-linux-amd64-sources.tar.gz
+  kapila-maker-linux-arm64-sources.tar.gz
   kapila-maker-windows-amd64-sources.tar.gz
   kapila-maker-macos-amd64-sources.tar.gz
 )
@@ -39,8 +42,10 @@ else
 fi
 notes="Commit: $GITHUB_SHA
 
-Each platform archive contains desktop and web executables, plus FFmpeg/FFprobe,
-VCDImager, dvda-author and mkisofs.
+Each platform archive contains desktop and web executables. All except Linux
+RISC-V include FFmpeg/FFprobe, VCDImager, dvda-author and mkisofs.
+Linux ARM64 is for 64-bit Raspberry Pi OS (Bookworm or newer) and compatible
+distributions. Linux RISC-V targets Debian 13 or newer and uses system tools.
 Windows has a per-user installer; macOS has a relocatable .app and DMG.
 Windows and macOS bundle GTK. Linux uses system GTK and utility shared libraries.
 Source archives include bundled utility/runtime sources, patches and build records.

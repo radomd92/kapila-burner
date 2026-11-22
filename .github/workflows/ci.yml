@@ -25,6 +25,8 @@ jobs:
         include:
           - platform: linux-amd64
             runner: ubuntu-22.04
+          - platform: linux-arm64
+            runner: ubuntu-22.04-arm
           - platform: windows-amd64
             runner: windows-2022
           - platform: macos-amd64
@@ -126,7 +128,7 @@ jobs:
             ${{ runner.temp }}/kapila-utilities/recipe-*/payload
           key: ${{ steps.utilities.outputs.cache-primary-key }}
       - name: Smoke test the extracted Linux bundle (no physical burn)
-        if: runner.os == 'Linux'
+        if: matrix.platform == 'linux-amd64'
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -134,6 +136,28 @@ jobs:
           trap 'rm -rf -- "$relocated"' EXIT
           tar -xzf "dist/kapila-maker-$PLATFORM.tar.gz" -C "$relocated"
           xvfb-run -a python3 scripts/smoke-bundle.py "$relocated/kapila-maker-$PLATFORM"
+      - name: Smoke test ARM64 on the Raspberry Pi OS baselines
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          for suite in bookworm trixie; do
+            docker run --rm --platform linux/arm64 -e DEBIAN_FRONTEND=noninteractive \
+              -e "SUITE=$suite" -v "$PWD:/src:ro" "debian:$suite-slim" bash -euc '
+                apt-get update
+                if [[ $SUITE == bookworm ]]; then
+                  packages=(libgtk-3-0 libcdio19 libiso9660-11 libpopt0)
+                  smoke_args=()
+                else
+                  packages=(libgtk-3-0t64 vcdimager)
+                  smoke_args=(--system-vcdimager)
+                fi
+                apt-get install -y --no-install-recommends python3 adwaita-icon-theme \
+                  xvfb xauth "${packages[@]}"
+                mkdir /tmp/relocated
+                tar -xzf /src/dist/kapila-maker-linux-arm64.tar.gz -C /tmp/relocated
+                xvfb-run -a python3 /src/scripts/smoke-bundle.py \
+                  "${smoke_args[@]}" /tmp/relocated/kapila-maker-linux-arm64
+              '
+          done
       - name: Upload executable archive
         uses: actions/upload-artifact@v4
         with:
@@ -146,9 +170,42 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  riscv64:
+    name: Build linux-riscv64 (Debian system tools)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: riscv64
+      - name: Build and smoke-test RISC-V executables under QEMU
+        run: |
+          docker run --rm --platform linux/riscv64 \
+            -e DEBIAN_FRONTEND=noninteractive -e GITHUB_SHA \
+            -e EXPECTED_PLATFORM=linux-riscv64 -e GOMAXPROCS=4 -e GOFLAGS=-buildvcs=false \
+            -v "$PWD:/src" -w /src \
+            debian:trixie-slim@sha256:8262446fd210d732d072b0a09ba1dd015055971e642c82d145afe5ed88a059e7 \
+            bash -euc '
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates pkg-config \
+                build-essential golang-go libgtk-3-dev ffmpeg vcdimager dvdauthor \
+                genisoimage python3 adwaita-icon-theme xvfb xauth
+              make package
+              mkdir /tmp/relocated
+              tar -xzf dist/kapila-maker-linux-riscv64.tar.gz -C /tmp/relocated
+              xvfb-run -a python3 scripts/smoke-bundle.py --system-tools /tmp/relocated/kapila-maker-linux-riscv64
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kapila-maker-linux-riscv64
+          path: dist/kapila-maker-linux-riscv64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish executables
-    needs: build
+    needs: [build, riscv64]
     if: >-
       github.event_name != 'pull_request' &&
       (startsWith(github.ref, 'refs/tags/v') ||

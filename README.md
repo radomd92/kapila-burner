@@ -16,7 +16,7 @@ Tsy mila tolotra an-tserasera izy ireo ary mampiasa motera iray ihany.
 Havaozina rehefa mahomby ny CI eo amin'ny sampana fototra ny kinova andrana
 **continuous**.
 
-**Efa navoaka ny rakitra valo `kapila-maker` sy `SHA256SUMS`.**
+**Efa navoaka ny rakitra `kapila-maker` x86-64 sy `SHA256SUMS`.**
 Nahomby tamin'ny rafitra telo sy ny famoahana ny
 [CI native](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
 amin'ny commit `218ebf4`, ary navoaka ny `continuous`.
@@ -32,6 +32,8 @@ Arisiva portable hafa:
 | Rafitra | Rakitra alaina |
 | --- | --- |
 | Linux x86-64 | [kapila-maker-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64.tar.gz) |
+| Linux ARM64 (Raspberry Pi OS 64-bit) | [kapila-maker-linux-arm64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64.tar.gz) |
+| Linux RISC-V (`riscv64`) | [kapila-maker-linux-riscv64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-riscv64.tar.gz) |
 | Windows x86-64 | [kapila-maker-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64.zip) |
 | macOS Intel x86-64 | [kapila-maker-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.tar.gz) |
 
@@ -60,8 +62,11 @@ Manaraka ny rafitra `Contents/MacOS`, `Helpers`, `Frameworks`, `PlugIns` ary
 | Windows | Ampiasao ny installer EXE, na tazomy ny **lahatahiry ZIP voavaha manontolo** ary alefaso ny `kapila-maker.exe` / `launch-gtk.cmd`. Ao ny GTK DLL, libraries sy angon-drakitra ilaina; aza afindra irery ny `.exe`. |
 | macOS | Intel macOS 15 na vao haingana kokoa. Sokafy ny DMG ary tariho ao amin'ny Applications ny **`kapila-maker.app`** mahaleo tena, na ampiasao ny tar.gz. Ao ny GTK, libraries sy angon-drakitra ilaina; tsy mila Homebrew. |
 
-Tsy misy kinova ARM avoaka. Ao anatin'ny fonosana Linux ny fitaovana fanamboarana
-kapila; ny GTK sy ny libraries VCD kosa dia avy amin'ny rafitra.
+Ho an'ny Raspberry Pi, ampiasao ny fonosana ARM64 miaraka amin'ny Raspberry Pi OS
+**64-bit** (Bookworm na vaovao kokoa). Ho an'ny fitaovana hafa misy Debian 13
+ny RISC-V; apetraka misaraka ny fitaovana fanamboarana kapila. Jereo ny
+[torolalana](README.en.md#dependencies). Handeha ny rohy ARM64 sy RISC-V rehefa
+avoaka voalohany ireo fonosana. Avy amin'ny rafitra ny GTK amin'ny Linux.
 **Linux ihany** no manohana fandoroana VCD ara-batana, miaraka amin'ny `cdrdao`
 tsy voatery apetraka raha image ihany no atao, sy fanekena mazava.
 Tsy tohanana ny fandoroana amin'ny Windows/macOS: mampiasà rindranasa fandoroana
@@ -78,8 +83,7 @@ rafitra. Tsy mila Homebrew, MSYS2, Go, Python, shell, compiler, fametrahana
 FFmpeg na fitaovana misaraka na fanamboarana `PATH` ny mpampiasa Windows/macOS.
 Ho an'ny fanamboarana CI ihany ireo fitaovana fampandrosoana.
 
-Mandrakotra **ireo rakitra valo efa navoaka** ny `SHA256SUMS`: arisiva
-portable telo, installer roa (EXE/DMG), ary arisiva source telo.
+Mandrakotra ny arisiva portable, installer ary arisiva source navoaka ny `SHA256SUMS`.
 Ny SHA-256 dia hanamarinana ny fitovian'ny rakitra alaina amin'ny `SHA256SUMS`,
 fa **tsy sonia kriptografika**. Jereo ny [torolalana fanamarinana](README.en.md#download).
 
@@ -166,6 +170,7 @@ fikarohana `./tools/bin/` sy `PATH` teo aloha.
 
 Efa navoaka miaraka amin'ny binaires ny
 [`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
+[`kapila-maker-linux-arm64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 sy
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz),

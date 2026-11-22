@@ -17,7 +17,7 @@ only GTK offers an explicitly confirmed physical VCD burn, never automatic burni
 
 Rolling **continuous prerelease**, updated by successful default-branch builds.
 
-**All eight `kapila-maker` assets and `SHA256SUMS` are published.**
+**The established x86-64 `kapila-maker` assets and `SHA256SUMS` are published.**
 The [successful native CI and publish run](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
 at commit `218ebf4` passed on all three platforms and published `continuous`.
 The three older `kapila-burner` assets remain on the release page as legacy
@@ -32,6 +32,8 @@ Portable alternatives:
 | Platform | Archive |
 | --- | --- |
 | Linux x86-64 | [kapila-maker-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64.tar.gz) |
+| Linux ARM64 (64-bit Raspberry Pi OS) | [kapila-maker-linux-arm64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64.tar.gz) |
+| Linux RISC-V (`riscv64`, Debian system tools) | [kapila-maker-linux-riscv64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-riscv64.tar.gz) |
 | Windows x86-64 | [kapila-maker-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64.zip) |
 | macOS Intel x86-64 | [kapila-maker-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.tar.gz) |
 
@@ -42,6 +44,7 @@ Portable alternatives:
 Each later successful default-branch run refreshes the release. Pull-request
 builds provide Actions artifacts retained for **14 days**, not public releases.
 Version tags matching `v*` publish separate versioned releases.
+The ARM64 and RISC-V links become available after their first successful release run.
 
 Every archive contains both native GTK **`kapila-maker`** and portable web
 **`kapila-maker-web`** executables (`.exe` on Windows). Extract before running.
@@ -59,11 +62,13 @@ layout and is self-contained apart from macOS system components.
 | Windows | Install the setup EXE, or keep the **entire extracted ZIP folder** and run `kapila-maker.exe` / `launch-gtk.cmd`, not an isolated `.exe`. GTK DLLs, libraries and runtime data are included. |
 | macOS | Intel macOS 15 or newer. Open the DMG and drag the self-contained **`kapila-maker.app`** to Applications; the tarball is an alternative. GTK, libraries and runtime data are included; no Homebrew is required. |
 
-No ARM executables are published. Physical VCD burning is **Linux-only** and
+Use ARM64 on Raspberry Pi with a 64-bit OS (`dpkg --print-architecture` reports `arm64`). There
+is no 32-bit Pi build. RISC-V is for separate `riscv64` hardware, not Raspberry Pi.
+Physical VCD burning is **Linux-only** and
 requires optional `cdrdao` and explicit confirmation. Physical burning is
 unsupported on Windows/macOS: use an external burning app for ISO or BIN/CUE
 images. That app is **not required to author images**; burning is never automatic.
-Linux bundles the authoring tools but uses system GTK 3 and VCD libraries; see
+Linux x86-64 and ARM64 bundle the authoring tools but use system GTK 3 and VCD libraries; see
 [Dependencies](#dependencies).
 
 The Windows installer installs per-user into
@@ -76,8 +81,8 @@ End users of the Windows/macOS packages need no Homebrew, MSYS2, Go, Python,
 shell, compiler, separate FFmpeg or other utility installation, or `PATH` setup. CI build tools
 are not end-user requirements.
 
-`SHA256SUMS` covers **all eight published assets**: three portable archives,
-two installers (EXE/DMG), and three corresponding source archives. To check integrity,
+`SHA256SUMS` covers the published portable archives, installers, and
+corresponding source archives. To check integrity,
 download `SHA256SUMS` beside the downloads and use
 `sha256sum --check --ignore-missing SHA256SUMS` on Linux, or
 `shasum -a 256 kapila-maker-macos-amd64.tar.gz` on macOS and compare the value.
@@ -86,17 +91,17 @@ Checksums detect changed downloads; they are **not cryptographic signatures**.
 
 ## Run
 
-The new bundles find tools relative to the executable and work
+Bundles with utilities find them relative to the executable and work
 from **any working directory**. The default media root is the user's Music
 folder; output defaults to `kapila-maker/output` under the user's cache directory.
-Explicit `-root` and `-output` flags override these defaults. Source builds
-retain their existing working-directory defaults (`..` for media and
+Explicit `-root` and `-output` flags override these defaults. Source builds and the
+RISC-V archive instead use working-directory defaults (`..` for media and
 `./output` for output) and local tool discovery.
 
 ### Downloaded Executables
 
-On Linux, extract the entire archive and keep `tools/` and `BUILD-UTILITIES.txt`
-beside the executables. On Windows, use the installed shortcut. On macOS, open `kapila-maker.app` from
+On Linux, extract the entire archive. For x86-64 and ARM64 keep `tools/` and
+`BUILD-UTILITIES.txt` beside the executables. On Windows, use the installed shortcut. On macOS, open `kapila-maker.app` from
 Applications. Neither GUI launch requires a terminal. For optional command-line
 use, from an extracted archive on Linux or macOS:
 
@@ -277,7 +282,7 @@ to request cancellation; keep the engine alive until the job finishes.
 
 ## Dependencies
 
-**Published release bundles:** five executables are bundled: source-built FFmpeg/FFprobe
+**Release bundles except RISC-V:** five executables are bundled: source-built FFmpeg/FFprobe
 **9.0.2**, VCDImager **2.0.1**, the `dvda-author` core, and genuine DVD-Audio-capable
 `mkisofs`. Pinned versions, source URLs and hashes are recorded in
 [`scripts/utility-sources.tsv`](scripts/utility-sources.tsv), including the pinned
@@ -294,7 +299,21 @@ and output codecs limited to those required by the application.
 22.04, `libgtk-3-0t64` on Ubuntu 24.04). For VCD, install `libcdio19`,
 `libiso9660-11`, and `libpopt0` on Ubuntu 22.04; on Ubuntu 24.04 and Mint 22,
 use `libcdio19t64`, `libiso9660-11t64`, and `libpopt0`. `cdrdao` is optional
-and used only for physical VCD burning, not image authoring. Tool roles:
+and used only for physical VCD burning, not image authoring.
+
+On **64-bit Raspberry Pi OS Bookworm**, the ARM64 bundle uses `libgtk-3-0` for
+GTK and `libcdio19 libiso9660-11 libpopt0` for VCD. On Pi OS Trixie, use
+`libgtk-3-0t64` for GTK. For VCD, install the system `vcdimager` package and
+launch either app with `VCDIMAGER=/usr/bin/vcdimager`; the bundled executable
+uses Bookworm's older library ABI. Install `dvdauthor` separately for DVD-Video.
+
+On **RISC-V Debian 13 (Trixie)**, install `libgtk-3-0t64` for GTK and
+`ffmpeg vcdimager dvdauthor genisoimage` for VCD and DVD-Video. The archive
+contains both apps but no authoring utilities. DVD-Audio requires separately
+obtained RISC-V builds of `dvda-author` and, for ISO output, a `mkisofs` that
+supports `-dvd-audio`; Debian's `genisoimage` does not qualify.
+
+Tool roles:
 
 - `ffprobe` inspects source duration and format; `ffmpeg` converts the first
   audio stream to PCM WAV for DVD-Audio or transcodes video/audio for VCD and DVD-Video.
@@ -348,10 +367,12 @@ and tools README remain eligible for version control.
 
 The release provides
 [`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
+[`kapila-maker-linux-arm64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 and
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
-beside the binaries, all published and covered by `SHA256SUMS`. **You do not need these archives
+beside the corresponding binaries, covered by `SHA256SUMS`. The RISC-V archive
+does not redistribute utility binaries. **You do not need these archives
 to run the app.** They provide corresponding sources and license notices for
 the bundled components: exact runtime Homebrew formula source archives on macOS,
 all matching MSYS2 package sources on Windows, and pristine utility sources,

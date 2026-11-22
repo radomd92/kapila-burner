@@ -16,7 +16,7 @@ La création d'une image précède toute gravure : rien n'est gravé automatique
 
 Préversion continue (`continuous`), actualisée après une CI réussie.
 
-**Les huit fichiers `kapila-maker` et `SHA256SUMS` sont publiés.**
+**Les fichiers `kapila-maker` x86-64 et `SHA256SUMS` sont publiés.**
 La [CI native et la publication réussies](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
 au commit `218ebf4` ont validé les trois plateformes et publié `continuous`.
 Les trois anciens fichiers `kapila-burner` restent disponibles comme archives
@@ -31,6 +31,8 @@ Alternatives portables :
 | Plateforme | Archive |
 | --- | --- |
 | Linux x86-64 | [kapila-maker-linux-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64.tar.gz) |
+| Linux ARM64 (Raspberry Pi OS 64 bits) | [kapila-maker-linux-arm64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64.tar.gz) |
+| Linux RISC-V (`riscv64`) | [kapila-maker-linux-riscv64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-riscv64.tar.gz) |
 | Windows x86-64 | [kapila-maker-windows-amd64.zip](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64.zip) |
 | macOS Intel x86-64 | [kapila-maker-macos-amd64.tar.gz](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.tar.gz) |
 
@@ -59,8 +61,12 @@ macOS autonome utilise `Contents/MacOS`, `Helpers`, `Frameworks`, `PlugIns` et
 | Windows | Installez l'EXE ou conservez **tout le dossier ZIP extrait** et lancez `kapila-maker.exe` / `launch-gtk.cmd`, pas un `.exe` déplacé seul. Les DLL GTK, bibliothèques et données sont incluses. |
 | macOS | Intel macOS 15 ou plus récent. Ouvrez le DMG et glissez l'application autonome **`kapila-maker.app`** dans Applications, ou utilisez le tar.gz. GTK, bibliothèques et données sont incluses ; aucun Homebrew requis. |
 
-Aucun exécutable ARM n'est publié. Sous Linux, les outils sont inclus ; GTK 3 et
-les bibliothèques VCD restent fournis par le système. La gravure physique de VCD est réservée
+Sur Raspberry Pi, choisissez ARM64 avec Raspberry Pi OS **64 bits** (Bookworm
+ou plus récent). Le RISC-V vise un autre matériel sous Debian 13 : les deux
+interfaces sont fournies, mais les outils de création d'images doivent être
+installés séparément. Consultez le [guide des dépendances](README.en.md#dependencies).
+Les liens ARM64 et RISC-V seront actifs après une première publication réussie.
+Sous Linux, GTK 3 reste fourni par le système. La gravure physique de VCD est réservée
 à **Linux**, avec `cdrdao` facultatif et confirmation explicite. La gravure n'est
 pas prise en charge sous Windows/macOS : utilisez un logiciel externe pour graver
 les images. Ce logiciel n'est **pas requis pour créer les images** ; rien n'est
@@ -77,8 +83,8 @@ Windows/macOS n'ont besoin ni de Homebrew, MSYS2, Go, Python, shell, compilateur
 installation de FFmpeg ou d'autres outils séparée, ni de configuration du `PATH`. Les outils de
 compilation CI ne sont pas des prérequis utilisateur.
 
-`SHA256SUMS` couvre **les huit fichiers publiés** : trois archives
-portables, deux installateurs (EXE/DMG) et trois archives de sources correspondantes.
+`SHA256SUMS` couvre les archives portables, les installateurs et les archives
+de sources correspondantes publiés.
 
 Téléchargez `SHA256SUMS` pour vérifier l'intégrité des archives. Sous Linux :
 
@@ -196,6 +202,7 @@ facultatifs et leurs limites de portabilité.
 
 Les archives correspondantes
 [`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
+[`kapila-maker-linux-arm64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-arm64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 et
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
