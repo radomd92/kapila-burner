@@ -26,7 +26,7 @@ case $(uname -s) in
     Darwin)
         [[ $(uname -m) == x86_64 ]] || { printf 'A native Intel macOS build is required.\n' >&2; exit 1; }
         platform=macOSIntel; exe=; compiler=clang; patchcmd=gpatch
-        # Upstream configure discovers the literal name "make", not just MAKE.
+        # Keep nested tools and configure's fallback lookup on Homebrew GNU make.
         makeprefix=$(brew --prefix make)
         export PATH="$makeprefix/libexec/gnubin:$PATH"
         export MAKE="$makeprefix/libexec/gnubin/make"
@@ -212,7 +212,7 @@ avprefix="$dvda/local"
     generated=(config.h src/Makefile libutils/src/Makefile libfixwav/src/Makefile libiberty/src/Makefile)
     rm -f "${generated[@]}"
     # Upstream configure deletes local/, so configure BEFORE installing FFmpeg.
-    CC="$compiler" CFLAGS="${CFLAGS:--O2} $(pkg-config --cflags libpng)" \
+    MAKE="$make" CC="$compiler" CFLAGS="${CFLAGS:--O2} $(pkg-config --cflags libpng)" \
         ./configure --enable-core-build --prefix="$stage/tools" --build="$triplet"
     for file in "${generated[@]}"; do
         [[ -s $file ]] || { printf 'dvda-author configure did not generate %s\n' "$file" >&2; exit 1; }

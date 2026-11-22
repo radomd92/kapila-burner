@@ -116,3 +116,73 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
      if (globals->debugging)
      {
         if (! bSuccess)  fprintf(stderr, "%s\n", ERR "Error in write process to stdin.");
+--- a/m4/dependencies.m4
++++ b/m4/dependencies.m4
+@@ -92,7 +92,7 @@
+ 	       withval_libogg=no
+ 	       withval_sox=no
+ 	       withval_libiberty=yes
+-	       MAYBE_libiberty=$ROOTDIR/libiberty
++	       MAYBE_libiberty=libiberty/src
+ 	       libiberty_BUILD=yes
+ 	       libiberty_BUILD=no
+ 	       libogg_BUILD=no
+--- a/libiberty/src/Makefile.in
++++ b/libiberty/src/Makefile.in
+@@ -4,11 +4,11 @@
+  OBJECTS+= getopt.o getopt1.o
+ endif
+ 
+-CPPFLAGS += -I@ROOTDIR@/@MAYBE_libiberty@/include
++CPPFLAGS += -I@ROOTDIR@/libiberty/src/include
+ #for config.h
+ CPPFLAGS += -I@BUILDDIR@
+ 
+ libiberty.a: libiberty.a($(OBJECTS))
+ 
+-$(OBJECTS):%.o: @ROOTDIR@/@MAYBE_libiberty@/%.c
++$(OBJECTS):%.o: @ROOTDIR@/libiberty/src/%.c
+ 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
+--- a/m4/dvda.m4
++++ b/m4/dvda.m4
+@@ -244,28 +244,18 @@
+ AC_DEFUN([DVDA_TEST_MAKE_VERSION],
+ [
+ AC_MSG_NOTICE([Testing make version...])
+-AC_PATH_PROG(MAKE_PATH, [make], [], [$bindir:/bin:/usr/bin:/usr/local/bin])
+-#caution: quote [...]  regep square brackets
+-AS_IF([test x$MAKE_PATH != x],
+-  [
+-    MAKE_VERSION=$($MAKE_PATH -v | grep -G '\(3\.[[89]]\{1\}[[2-9]]\{1\}.*\|4\..\{1,2\}\)')
+-    AC_MSG_NOTICE([tested: whether version of $MAKE_PATH is 3.82+ ])
+-    AS_IF([test x"$MAKE_VERSION" != x],
+-     [
+-       DVDA_INF([Version of make is 3.82+: $MAKE_VERSION])
+-       MAKE="$MAKE_PATH"
+-
+-     ],
+-     [
+-       DVDA_INF([Installed version of make is not 3.82+: $MAKE_VERSION])
+-       AS_EXIT
+-     ])
+-  ],
+-  [
+-    DVDA_INF([Installed version of make is not upgraded])
+-    AS_EXIT
+-  ]
+-)
++AS_IF([test -n "$MAKE"],
++  [MAKE_PATH="$MAKE"],
++  [AC_PATH_PROG([MAKE_PATH], [make])])
++AS_IF([test -z "$MAKE_PATH"], [AC_MSG_ERROR([GNU make 3.82 or newer is required])])
++MAKE_VERSION=$("$MAKE_PATH" --version | $SED -n '1p')
++AS_CASE(["$MAKE_VERSION"],
++  ["GNU Make "*], [dvda_make_version=$(printf '%s\n' "$MAKE_VERSION" | $SED 's/^GNU Make //')],
++  [AC_MSG_ERROR([GNU make 3.82 or newer is required; found $MAKE_VERSION])])
++AS_VERSION_COMPARE([$dvda_make_version], [3.82],
++  [AC_MSG_ERROR([GNU make 3.82 or newer is required; found $MAKE_VERSION])], [], [])
++MAKE="$MAKE_PATH"
++AC_MSG_NOTICE([Using GNU make: $MAKE_PATH ($MAKE_VERSION)])
+ 
+ ]) #DVDA_TEST_SOFTWARE_VERSION
+ 
