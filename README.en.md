@@ -16,19 +16,17 @@ only GTK offers an explicitly confirmed physical VCD burn, never automatic burni
 
 Rolling **continuous prerelease**, updated by successful default-branch builds.
 
-**Bundling transition: verification is pending.** The currently published release
-is the older three-asset `kapila-burner` build with external authoring dependencies.
-The first native CI run failed and the new utilities pipeline is still being tested.
-The new `kapila-maker` assets below remain **pending until CI passes and
-publication is confirmed**. The new download links may return
-404 until then. The Windows/macOS bundle descriptions below describe the new
-packaging, not a verified or already published release.
+**All eight `kapila-maker` assets and `SHA256SUMS` are published.**
+The [successful native CI and publish run](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+at commit `218ebf4` passed on all three platforms and published `continuous`.
+The three older `kapila-burner` assets remain on the release page as legacy
+downloads; they are not the current `kapila-maker` bundles.
 
-Installers (pending publication):
+Installers:
 [Windows setup EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-setup.exe)
 | [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.dmg)
 
-Portable alternatives (new filenames, pending publication):
+Portable alternatives:
 
 | Platform | Archive |
 | --- | --- |
@@ -50,6 +48,9 @@ The new macOS tarball also contains **`kapila-maker.app`** alongside the native/
 convenience executables. The web interface needs no browser extensions or frontend
 build step. Windows/macOS packages include GTK, all required non-system libraries
 and runtime data, and all five image-authoring tools for both interfaces.
+Windows includes the GTK root DLLs, schemas and icons. The macOS `.app` uses
+the standard `Contents/MacOS`, `Helpers`, `Frameworks`, `PlugIns` and `Resources`
+layout and is self-contained apart from macOS system components.
 
 | Platform | Native GTK runtime and limits |
 | --- | --- |
@@ -70,11 +71,11 @@ provides shortcuts and an uninstaller. It is **unsigned**; Windows/SmartScreen
 may display an OS warning. No code-signing certificate is claimed. The macOS app
 is **ad-hoc signed, not Developer ID signed and not notarized**. Follow normal
 Gatekeeper and organization policy; do not disable system-wide security protections.
-End users of the new Windows/macOS packages need no Homebrew, MSYS2, Go, Python,
-shell, compiler, separate utility installation, or `PATH` setup. CI build tools
+End users of the Windows/macOS packages need no Homebrew, MSYS2, Go, Python,
+shell, compiler, separate FFmpeg or other utility installation, or `PATH` setup. CI build tools
 are not end-user requirements.
 
-On publication, `SHA256SUMS` will cover **eight assets**: three portable archives,
+`SHA256SUMS` covers **all eight published assets**: three portable archives,
 two installers (EXE/DMG), and three corresponding source archives. To check integrity,
 download `SHA256SUMS` beside the downloads and use
 `sha256sum --check --ignore-missing SHA256SUMS` on Linux, or
@@ -275,13 +276,19 @@ to request cancellation; keep the engine alive until the job finishes.
 
 ## Dependencies
 
-**New release bundles:** all five
+**Published release bundles:** all five
 image-authoring executables are bundled, including source-built FFmpeg/FFprobe
 **9.0.2**, VCDImager **2.0.1**, the `dvda-author` core, and genuine DVD-Audio-capable
 `mkisofs`. Pinned versions, source URLs and hashes are recorded in
 [`scripts/utility-sources.tsv`](scripts/utility-sources.tsv), including the pinned
 DVD-Audio and Schilytools commits. Windows and macOS also bundle GTK and the
 required non-system libraries/data.
+
+The native utilities are source-built with patches for upstream heap and
+working-directory/`BINDIR` bugs. A private, statically linked legacy FFmpeg
+**4.2.4** is used only internally for raw WAV handling by the DVD-Audio utility;
+the public `ffmpeg`/`ffprobe` remain **9.0.2**, with all input decoders enabled
+and output codecs limited to those required by the application.
 
 **Linux:** install system GTK 3 for the desktop interface (`libgtk-3-0` on Ubuntu
 22.04, `libgtk-3-0t64` on Ubuntu 24.04). For VCD, install `libcdio19`,
@@ -335,12 +342,12 @@ and tools README remain eligible for version control.
 
 ### Corresponding Sources
 
-The new release will provide
+The release provides
 [`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 and
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
-beside the binaries (also pending publication). **You do not need these archives
+beside the binaries, all published and covered by `SHA256SUMS`. **You do not need these archives
 to run the app.** They provide corresponding sources and license notices for
 the bundled components: exact runtime Homebrew formula source archives on macOS,
 all matching MSYS2 package sources on Windows, and pristine utility sources,
@@ -357,7 +364,8 @@ matching sources cannot be collected, rather than publish incomplete sources.
 
 ## Make A DVD-Audio Disc
 
-1. In GTK, click **Scan Folder** and wait for it to finish. In the web interface,
+1. In GTK, open a DVD-Audio project, choose a folder, then click **Scan Folder**
+   and wait for it to finish; there is no automatic scan. In the web interface,
    wait for the library scan. Filter by an album or folder name
    to find your input files.
    The filter matches relative paths; it does not change the library root or
@@ -582,6 +590,17 @@ before committing a large collection.
 
 ## Checks
 
+The [successful bundled-release run](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+at `218ebf4` passed all three native jobs and publication. On Linux, Windows and
+macOS, it validated flat bundles with `PATH` stripped, real DVD-Audio ISO and
+PAL/NTSC VCD outputs, and GTK smoke tests in Malagasy, English and French.
+The Windows per-user installer passed silent installation into a path containing
+spaces, authoring with all five actually installed utilities, GTK smoke tests in
+all three languages, then silent uninstall and registry cleanup. The macOS DMG
+passed read-only mounting, copying the `.app` with `ditto` into a new path
+containing spaces, `codesign --verify --strict --deep`, real authoring and GTK
+smoke tests in all three languages.
+
 Run from the application directory:
 
 ```sh
@@ -625,20 +644,19 @@ The [CI workflow](https://github.com/radomd92/kapila-burner/actions/workflows/ci
 builds native GTK and web archives on Ubuntu 22.04, Windows Server 2022, and
 Intel macOS 15. Linux runs race tests, vet, GTK tests, and the three-language
 widget smoke checks, with `VCD_INTEGRATION=1` for real VCD image authoring.
-The new bundling CI is intended to source-build the Windows/macOS utilities and
-create real DVD-Audio ISO and VCD BIN/CUE images with a clean `PATH`, including
-checks of a relocated macOS `.app`. Runtime source collection must fail closed
-on missing corresponding sources. **These new checks are currently pending;
-they are not yet evidence of a successful bundled release.** No CI job burns
-physical media or verifies hardware playback.
+Bundling CI source-builds the native utilities and validates real DVD-Audio ISO
+and PAL/NTSC VCD BIN/CUE images with a stripped `PATH`, plus three-language GTK
+smoke tests on all three platforms. Installer and relocated macOS `.app` checks
+passed as detailed in [Checks](#checks). Runtime source collection fails closed
+on missing corresponding sources. **Physical VCD burn tests use mock writers;
+no actual disc write or cross-hardware player compatibility has been tested.**
 
 Use `make web`, `make gtk`, `make test`, `make test-gtk`, and `make smoke-gtk`
 for local development; `make package` builds the release layout on the target
-OS with its development dependencies. Linux GTK widget checks run under Xvfb;
-the new Windows/macOS authoring/relocation checks go beyond the old `-h` launch
-checks, but do not establish graphical interaction or hardware playback.
-The older successful CI/release does **not** verify the new dependency bundles.
-Consult the badge, run logs and published asset list for the current status.
+OS with its development dependencies. Linux GTK widget checks run under Xvfb.
+The [verified run](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+and published asset list document the bundled release; GUI smoke tests are not
+an exhaustive manual UI or hardware-player test.
 
 For contributions, branch from `main`, make a focused change, run the relevant
 checks, and open a pull request against `main`. Include reproduction steps for

@@ -15,20 +15,17 @@ La création d'une image précède toute gravure : rien n'est gravé automatique
 
 Préversion continue (`continuous`), actualisée après une CI réussie.
 
-**Transition en cours : la vérification des nouveaux paquets est en attente.**
-La version actuellement publiée reste l'ancienne `kapila-burner`, avec trois fichiers
-et des outils d'authoring externes. La première CI native a échoué et le nouveau
-pipeline des utilitaires est encore en test. Les nouveaux fichiers
-`kapila-maker` restent **en attente jusqu'à la réussite de la CI et à la confirmation
-de leur publication complète**. Les nouveaux liens peuvent renvoyer une erreur 404
-d'ici là. Les descriptions des nouveaux paquets ci-dessous ne prouvent pas leur
-validation ni leur disponibilité.
+**Les huit fichiers `kapila-maker` et `SHA256SUMS` sont publiés.**
+La [CI native et la publication réussies](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+au commit `218ebf4` ont validé les trois plateformes et publié `continuous`.
+Les trois anciens fichiers `kapila-burner` restent disponibles comme archives
+historiques ; ce ne sont pas les paquets `kapila-maker` actuels.
 
-Installateurs (publication en attente) :
+Installateurs :
 [Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-setup.exe)
 | [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.dmg)
 
-Alternatives portables (nouveaux noms, publication en attente) :
+Alternatives portables :
 
 | Plateforme | Archive |
 | --- | --- |
@@ -51,6 +48,9 @@ Le nouveau tar.gz macOS contient aussi **`kapila-maker.app`**, ainsi que les
 exécutables natif/web de commodité. Les nouveaux paquets Windows/macOS incluent
 GTK, toutes les bibliothèques non système et données nécessaires et les cinq
 outils de création d'images, pour les deux interfaces.
+Windows inclut les DLL GTK à la racine, les schémas et les icônes. L'application
+macOS autonome utilise `Contents/MacOS`, `Helpers`, `Frameworks`, `PlugIns` et
+`Resources`, sans dépendance Homebrew à l'exécution.
 
 | Plateforme | Exigences de l'interface GTK |
 | --- | --- |
@@ -73,10 +73,10 @@ L'application macOS porte une **signature ad hoc, sans signature Developer ID ni
 notarisation**. Respectez les règles normales de Gatekeeper et de votre organisation,
 sans désactiver les protections globales. Les utilisateurs des nouveaux paquets
 Windows/macOS n'ont besoin ni de Homebrew, MSYS2, Go, Python, shell, compilateur,
-installation d'outils séparée, ni de configuration du `PATH`. Les outils de
+installation de FFmpeg ou d'autres outils séparée, ni de configuration du `PATH`. Les outils de
 compilation CI ne sont pas des prérequis utilisateur.
 
-Après publication, `SHA256SUMS` couvrira **huit fichiers** : trois archives
+`SHA256SUMS` couvre **les huit fichiers publiés** : trois archives
 portables, deux installateurs (EXE/DMG) et trois archives de sources correspondantes.
 
 Téléchargez `SHA256SUMS` pour vérifier l'intégrité des archives. Sous Linux :
@@ -149,7 +149,7 @@ modifications non enregistrées. New, Open, Close et Quit proposent
 sont atomiques et Save réutilise le chemin choisi. `-project /path/to/project.json`
 permet d'ouvrir un projet au lancement.
 
-Dans GTK, choisir un dossier ne déclenche aucune analyse. Ouvrez un projet puis
+Dans GTK, aucune analyse n'a lieu au démarrage ni au changement de dossier. Ouvrez un projet, choisissez un dossier puis
 cliquez sur **Analyser le dossier** pour rechercher les médias dans le dossier
 sélectionné, à l'intérieur de `-root`.
 
@@ -160,7 +160,7 @@ des médias** : les sources doivent rester aux mêmes chemins relatifs à la rac
 
 ## Outils Externes
 
-Les **nouveaux paquets, encore en attente de validation/publication**,
+Les **paquets publiés**
 incluent les cinq outils de création d'images compilés depuis les sources :
 FFmpeg/FFprobe **9.0.2**, VCDImager **2.0.1**, le coeur `dvda-author` et un véritable
 `mkisofs` compatible DVD-Audio. Les versions/commits épinglés, URL et empreintes
@@ -168,6 +168,12 @@ figurent dans le [manifeste des sources](scripts/utility-sources.tsv).
 Sous **Linux**, consultez le [guide des dépendances](README.en.md#dependencies)
 pour les bibliothèques système GTK et VCD. `cdrdao` reste facultatif pour la
 gravure. Dans GTK, **Outils externes** affiche l'état, les chemins et les diagnostics.
+
+Les utilitaires natifs sont compilés depuis les sources avec des correctifs des
+bogues amont de tas et de répertoire courant/`BINDIR`. Un FFmpeg **4.2.4** privé,
+lié statiquement, ne sert qu'au traitement WAV brut interne de l'outil DVD-Audio.
+Les `ffmpeg`/`ffprobe` publics restent en **9.0.2**, avec tous les décodeurs
+d'entrée et seulement les codecs de sortie nécessaires à l'application.
 
 | Fonction | Outils nécessaires |
 | --- | --- |
@@ -192,7 +198,7 @@ Les archives correspondantes
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 et
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
-seront publiées avec les nouveaux paquets ; elles sont aussi en attente.
+sont publiées avec les binaires et couvertes par `SHA256SUMS`.
 **Elles ne sont pas nécessaires pour exécuter l'application.** Elles contiennent
 les archives sources exactes des formules du runtime macOS, toutes les sources
 des paquets MSYS2 correspondants, les sources originales des utilitaires, les
@@ -202,7 +208,7 @@ manifestes et la reconstruction facultative des utilitaires hors ligne.
 
 ## Créer Un DVD-Audio
 
-1. Choisissez **DVD Audio**, puis cliquez sur **Analyser le dossier** dans GTK.
+1. Choisissez **DVD Audio**, choisissez un dossier, puis cliquez sur **Analyser le dossier** dans GTK ; aucune analyse automatique.
    Attendez la fin de l'analyse avant de sélectionner les pistes.
 2. Filtrez les fichiers, ajoutez les pistes et réglez leur ordre. Vous pouvez créer jusqu'à neuf groupes de 99 pistes ; les doublons sont autorisés.
 3. Commencez avec **stéréo, 16 bits, 44,1 kHz**, DVD-5 et ISO activé. Vérifiez les estimations de capacité et d'espace de travail.
@@ -308,16 +314,20 @@ le système cible avec ses dépendances de développement GTK.
 La CI compile les deux interfaces sur Ubuntu 22.04, Windows Server 2022 et
 macOS 15 Intel. Sous Linux, elle exécute les tests avec détection de courses,
 vet, les tests GTK, les smoke tests dans les trois langues via Xvfb et la
-création réelle de VCD avec `VCD_INTEGRATION=1`. La nouvelle CI de bundling prévoit
-la compilation source des utilitaires Windows/macOS, la création réelle d'images
-DVD-Audio et VCD avec un `PATH` nettoyé et le contrôle d'une `.app` déplacée.
-La collecte des sources doit échouer si des sources correspondantes manquent.
-**Ces nouveaux contrôles sont encore en attente, pas validés.** Aucun test CI
-ne grave de disque ni ne vérifie la lecture sur matériel.
-
-Les anciens succès CI ne prouvent pas le bon fonctionnement des nouveaux paquets.
-Les contrôles graphiques GTK restent sous Linux ; les nouveaux tests d'images et
-de déplacement Windows/macOS vont au-delà de l'ancien lancement avec `-h`, sans
-prouver l'interaction graphique. Consultez les logs CI et les fichiers publiés.
+création réelle de VCD avec `VCD_INTEGRATION=1`.
+La [CI réussie au commit `218ebf4`](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+a validé les trois jobs natifs et la publication. Sur les trois plateformes,
+les paquets à plat ont passé les tests avec `PATH` nettoyé, la création réelle
+d'ISO DVD-Audio et de VCD PAL/NTSC, et les smoke tests GTK en malgache, anglais et français.
+L'installateur Windows par utilisateur a passé l'installation silencieuse dans
+un chemin avec espaces, l'authoring avec les cinq utilitaires réellement installés,
+les tests GTK dans les trois langues, puis la désinstallation silencieuse et le
+nettoyage du registre. Le DMG macOS a passé le montage en lecture seule, la copie
+de l'application avec `ditto` dans un nouveau chemin avec espaces, la vérification
+`codesign --verify --strict --deep`, l'authoring et les tests GTK dans les trois langues.
+La collecte des sources échoue si des sources correspondantes manquent.
+**Les tests de gravure physique VCD utilisent des graveurs simulés : aucune
+écriture réelle de disque ni compatibilité entre lecteurs matériels n'a été testée.**
+Les smoke tests ne remplacent pas une validation manuelle exhaustive de l'interface.
 Pour contribuer, créez une branche depuis `main`,
 exécutez les vérifications pertinentes et ouvrez une pull request vers `main`.

@@ -15,19 +15,18 @@ Tsy mila tolotra an-tserasera izy ireo ary mampiasa motera iray ihany.
 Havaozina rehefa mahomby ny CI eo amin'ny sampana fototra ny kinova andrana
 **continuous**.
 
-**Mbola miandry fanamarinana CI ny fonosana vaovao.** Ny kinova efa navoaka
-ankehitriny dia ilay `kapila-burner` taloha misy rakitra telo, mbola mila fitaovana
-fanamboarana kapila ivelany. Tsy nahomby ny CI native voalohany ary mbola andramana
-ny pipeline vaovao ho an'ny utilities. **Mbola miandry ireo rakitra vaovao
-`kapila-maker` mandra-pahombiazan'ny CI sy fanamafisana ny famoahana azy.**
-Mety hamerina 404 ireo rohy vaovao mandra-pahatongan'izany. Momba ny fonosana vaovao
-ny fanazavana Windows/macOS eto ambany, fa tsy porofo fa efa voamarina na navoaka.
+**Efa navoaka ny rakitra valo `kapila-maker` sy `SHA256SUMS`.**
+Nahomby tamin'ny rafitra telo sy ny famoahana ny
+[CI native](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+amin'ny commit `218ebf4`, ary navoaka ny `continuous`.
+Mbola eo amin'ny pejin'ny kinova ireo rakitra telo `kapila-burner` taloha,
+fa tsy ireo no fonosana `kapila-maker` ankehitriny.
 
-Installer (mbola miandry famoahana):
+Installer:
 [Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-setup.exe)
 | [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64.dmg)
 
-Arisiva portable hafa (anarana vaovao, mbola miandry famoahana):
+Arisiva portable hafa:
 
 | Rafitra | Rakitra alaina |
 | --- | --- |
@@ -42,8 +41,6 @@ Arisiva portable hafa (anarana vaovao, mbola miandry famoahana):
 Havaozina isaky ny CI mahomby manaraka
 ny `continuous`. Ny pull request kosa dia manana artifacts ao amin'ny Actions,
 tehirizina **14 andro**, fa tsy mamoaka kinova ho an'ny daholobe.
-Tsy midika ho fahombiazan'ny fanamboarana rehetra ny fisian'ireo rohy ireo;
-jereo ny satan'ny Actions.
 
 Ao anatin'ny arisiva tsirairay ny **`kapila-maker`** (GTK) sy
 **`kapila-maker-web`** (web); misy tovana `.exe` amin'ny Windows.
@@ -52,6 +49,9 @@ Ny tar.gz macOS vaovao dia misy **`kapila-maker.app`** sy ireo executable
 GTK/web ho fanamorana ny fampiasana. Ao amin'ny fonosana Windows/macOS vaovao
 ny GTK, ny libraries tsy avy amin'ny rafitra sy angon-drakitra rehetra ilaina,
 ary ny fitaovana dimy fanamboarana image ho an'ny interface roa.
+Ao amin'ny Windows ny GTK DLL eo amin'ny fototry ny fonosana, schemas ary icons.
+Manaraka ny rafitra `Contents/MacOS`, `Helpers`, `Frameworks`, `PlugIns` ary
+`Resources` ny `.app` macOS mahaleo tena; tsy mila Homebrew rehefa ampiasaina.
 
 | Rafitra | Zavatra ilaina amin'ny GTK |
 | --- | --- |
@@ -74,10 +74,10 @@ tsy lazaina ho manana code-signing certificate. Ny macOS app dia manana
 **sonia ad hoc, fa tsy Developer ID ary tsy notarized**. Araho ny fitsipika
 mahazatra Gatekeeper sy ny an'ny fikambananao; aza vonoina ny fiarovana maneran'ny
 rafitra. Tsy mila Homebrew, MSYS2, Go, Python, shell, compiler, fametrahana
-fitaovana misaraka na fanamboarana `PATH` ny mpampiasa Windows/macOS vaovao.
+FFmpeg na fitaovana misaraka na fanamboarana `PATH` ny mpampiasa Windows/macOS.
 Ho an'ny fanamboarana CI ihany ireo fitaovana fampandrosoana.
 
-Rehefa avoaka ny vaovao, mandrakotra **rakitra valo** ny `SHA256SUMS`: arisiva
+Mandrakotra **ireo rakitra valo efa navoaka** ny `SHA256SUMS`: arisiva
 portable telo, installer roa (EXE/DMG), ary arisiva source telo.
 Ny SHA-256 dia hanamarinana ny fitovian'ny rakitra alaina amin'ny `SHA256SUMS`,
 fa **tsy sonia kriptografika**. Jereo ny [torolalana fanamarinana](README.en.md#download).
@@ -126,13 +126,13 @@ dia tsy ovaina. Ny diarin'asa sy ny hadisoana novokarin'ny rindranasa dia
 mitazona ny teny nampiasaina tamin'ny nanombohan'ilay asa; tsy adika ny
 hafatra manta avy amin'ny fitaovana ivelany.
 
-Amin'ny GTK, tsy mandeha ho azy ny fikarohana rehefa misafidy lahatahiry.
-Sokafy ny tetikasa ary tsindrio **Hikaroka ao amin'ny lahatahiry** mba hitady
+Amin'ny GTK, tsy mandeha ho azy ny fikarohana rehefa manomboka na misafidy lahatahiry.
+Sokafy ny tetikasa, mifidiana lahatahiry ary tsindrio **Hikaroka ao amin'ny lahatahiry** mba hitady
 rakitra ao amin'ilay lahatahiry voafidy ao anatin'ny `-root`.
 
 ## Fitaovana Ivelany
 
-Ao amin'ny **fonosana vaovao, mbola miandry CI sy famoahana**,
+Ao amin'ny **fonosana efa navoaka**,
 ny fitaovana dimy namboarina avy amin'ny source: FFmpeg/FFprobe **9.0.2**,
 VCDImager **2.0.1**, ny fototra `dvda-author`, ary `mkisofs` tena manohana
 DVD-Audio. Ao amin'ny [utility sources manifest](scripts/utility-sources.tsv)
@@ -140,6 +140,12 @@ ny version/commit voafetra, URL sy SHA-256. Amin'ny **Linux**, jereo ny
 [torolalana](README.en.md#dependencies) momba ny GTK sy libraries VCD avy amin'ny rafitra.
 Tsy voatery ny `cdrdao` raha tsy mandoro VCD. Ao amin'ny GTK, **Fitaovana ivelany**
 no mampiseho ny satan'ny fitaovana sy ny lalany.
+
+Namboarina avy amin'ny source ny utilities native, miaraka amin'ny patches ho
+an'ny hadisoana upstream heap sy lahatahiry iasana/`BINDIR`. FFmpeg **4.2.4**
+private mifamatotra static no ampiasaina anatiny ihany amin'ny WAV manta ao
+amin'ny fitaovana DVD-Audio. **9.0.2** hatrany ny `ffmpeg`/`ffprobe` ampiasain'ny
+app, misy ny input decoders rehetra fa ireo output codecs ilain'ny app ihany.
 
 | Fampiasana | Fitaovana ilaina |
 | --- | --- |
@@ -157,12 +163,12 @@ fikarohana `./tools/bin/` sy `PATH` teo aloha.
 
 ### Source Sy Fahazoan-dalana
 
-Havoaka miaraka amin'ny vaovao ny
+Efa navoaka miaraka amin'ny binaires ny
 [`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 sy
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz),
-mbola miandry famoahana koa. **Tsy mila ireo source ireo hampandehanana ny app.**
+ary tafiditra ao amin'ny `SHA256SUMS`. **Tsy mila ireo source ireo hampandehanana ny app.**
 Ao ny arisiva source marina an'ireo formula runtime macOS, ny source rehetra
 an'ireo package MSYS2 mifanaraka aminy, ny source utility tany am-boalohany,
 patches, scripts sy licences. Tazomy ny filazana fahazoan-dalana; samy manana
@@ -172,7 +178,7 @@ manifest sy ny fanamboarana utility tsy mila tambajotra, raha ilaina.
 
 ## Fampiasana
 
-1. Mamorona tetikasa **DVD Audio** na **Video CD**, dia andraso ny fizahana ny tahiry.
+1. Mamorona tetikasa **DVD Audio** na **Video CD**. Amin'ny GTK, mifidiana lahatahiry ary tsindrio **Hikaroka ao amin'ny lahatahiry**; tsy mandeha ho azy ny fikarohana. Amin'ny web, andraso ny fizahana ny tahiry.
 2. Safidio sy ampio ireo rakitra, alamino ny vondrona sy ny filaharan'ny hira.
 3. Hamarino ny tomban'ny haben'ny kapila sy ny toerana malalaka ilaina.
 4. Safidio ny **Create Image** ao amin'ny GTK na ny bokotra fanamboarana ao amin'ny web.
@@ -234,16 +240,19 @@ no anaran'ny executable eo an-toerana sy ao amin'ny fonosana avoaka.
 Ao amin'ny [tools/gtk-dev](tools/gtk-dev/README.md) ny overlay GTK ho an'ny
 fampandrosoana amin'ny Linux sasany.
 
-Ny CI dia manamboatra ny arisiva telo ary manao tests, vet, GTK smoke amin'ny
-teny telo sy VCD integration amin'ny Linux. Ny CI bundling vaovao dia kasaina
-hanamboatra utility avy amin'ny source amin'ny Windows/macOS, hamorona image
-DVD-Audio sy VCD amin'ny `PATH` voadio, ary hizaha `.app` macOS nafindra toerana.
-Tsy maintsy mijanona ho diso ny fanangonana source raha misy source mifanaraka
-tsy hita. **Mbola miandry fanamarinana ireo fitsapana vaovao ireo.** Tsy porofo
-ho an'ny fonosana vaovao ny fahombiazan'ny CI sy release taloha.
-Tsy misy fandoroana na fitsapana playback ara-batana amin'ny CI. Amin'ny Linux
-no anaovana ny fitsapana an-tsary GTK; mihoatra ny `-h` taloha ny fitsapana
-image sy relocation vaovao, fa tsy manamarina fifandraisana an-tsary amin'ny
-Windows/macOS. Jereo ny logs CI sy ny lisitry ny rakitra navoaka.
+Ny [CI nahomby amin'ny `218ebf4`](https://github.com/radomd92/kapila-burner/actions/runs/45065134177)
+dia nandalo tamin'ny jobs native telo sy ny famoahana. Manao tests, vet ary
+VCD integration amin'ny Linux izy. Tamin'ny rafitra telo, voamarina ny fonosana
+flat tamin'ny `PATH` voadio, ny ISO DVD-Audio sy VCD PAL/NTSC tena novokarina,
+ary ny GTK smoke amin'ny teny malagasy, anglisy ary frantsay.
+Nandalo ny installer Windows isaky ny mpampiasa: silent install amin'ny lalana
+misy elanelana, authoring amin'ireo utilities dimy tena napetraka, GTK amin'ny
+teny telo, avy eo silent uninstall sy fanadiovana registry. Nandalo ny DMG
+macOS: mount read-only, kopia `.app` amin'ny `ditto` ho amin'ny lalana vaovao misy
+elanelana, `codesign --verify --strict --deep`, authoring ary GTK amin'ny teny telo.
+Mijanona ho diso ny fanangonana source raha misy source mifanaraka tsy hita.
+**Mock ihany ny mpandoro amin'ny tests VCD: tsy mbola nisy fanoratana kapila
+tena izy na fitsapana fifanarahana amin'ny mpamaky hardware samihafa.**
+Tsy manolo fitsapana tanana feno amin'ny interface ny GTK smoke.
 Manaova sampana avy amin'ny `main` ary pull request mankany
 amin'ny `main` raha handray anjara.
