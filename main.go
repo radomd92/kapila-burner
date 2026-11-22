@@ -42,7 +42,7 @@ func main() {
 		args = args[1:]
 	}
 	flags := flag.NewFlagSet("kapila-maker-web", flag.ExitOnError)
-	root := flags.String("root", defaultRoot, "Audio library root directory")
+	root := flags.String("root", defaultRoot, "Media library root directory")
 	output := flags.String("output", defaultOutput, "Authoring output directory")
 	listen := flags.String("listen", "127.0.0.1:8787", "Loopback listen address")
 	_ = flags.Parse(args)
@@ -105,6 +105,9 @@ func decodeProject(w http.ResponseWriter, r *http.Request) (core.Project, error)
 	var extra any
 	if err := d.Decode(&extra); err != io.EOF {
 		return p, errors.New(i18n.Text(i18n.Language(r.Context()), "Expected a single project JSON object"))
+	}
+	if p.Format == "dvd-video" {
+		p.ISO = true
 	}
 	return p, nil
 }
@@ -185,6 +188,9 @@ func (s *webAdapter) handler(address string) http.Handler {
 			if file != "" && file != "iso" {
 				http.NotFound(w, r)
 				return
+			}
+			if job.Format == "dvd-video" {
+				name = "dvd-video.iso"
 			}
 		case ".cue":
 			if filepath.Base(path) != "disc.cue" || (file != "" && file != "cue" && file != "bin") {

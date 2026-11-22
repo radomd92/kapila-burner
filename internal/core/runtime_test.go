@@ -198,7 +198,7 @@ func TestBundledDiscovery(t *testing.T) {
 				}
 			}
 			t.Setenv("PATH", "")
-			for _, key := range []string{"FFMPEG", "FFPROBE", "DVDA_AUTHOR", "MKISOFS", "VCDIMAGER", "CDRDAO"} {
+			for _, key := range []string{"FFMPEG", "FFPROBE", "DVDA_AUTHOR", "MKISOFS", "VCDIMAGER", "CDRDAO", "DVDAUTHOR", "DVD_VIDEO_MKISOFS"} {
 				t.Setenv(key, "")
 			}
 			suffix := ""
@@ -207,7 +207,7 @@ func TestBundledDiscovery(t *testing.T) {
 			}
 			for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager"} {
 				for _, root := range []string{bundle, app} {
-					writeRuntimeTool(t, filepath.Join(runtimeenv.ToolDir(root), name+suffix), "case \"$PATH\" in \"$EXPECTED_BUNDLE\"*) ;; *) exit 3;; esac\nprintf '%s\\n' '-dvd-audio'\n")
+					writeRuntimeTool(t, filepath.Join(runtimeenv.ToolDir(root), name+suffix), "case \"$PATH\" in \"$EXPECTED_BUNDLE\"*) ;; *) exit 3;; esac\nprintf '%s\\n' '-dvd-audio' '-dvd-video'\n")
 				}
 			}
 			check := func(wantRoot string) {
@@ -221,7 +221,14 @@ func TestBundledDiscovery(t *testing.T) {
 						}
 						continue
 					}
-					if !tool.Ready || tool.Path != filepath.Join(runtimeenv.ToolDir(wantRoot), tool.Name+suffix) || tool.bundleRoot != wantRoot {
+					if tool.Name == "dvdauthor" {
+						continue // DVD-Video authoring is an external opt-in dependency.
+					}
+					name := tool.Name
+					if name == "dvd-video-mkisofs" {
+						name = "mkisofs"
+					}
+					if !tool.Ready || tool.Path != filepath.Join(runtimeenv.ToolDir(wantRoot), name+suffix) || tool.bundleRoot != wantRoot {
 						t.Fatalf("tool = %+v, bundleRoot = %q", tool, tool.bundleRoot)
 					}
 				}

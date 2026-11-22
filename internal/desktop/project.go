@@ -15,6 +15,12 @@ import (
 	"dvd-audio-studio/internal/core"
 )
 
+const (
+	dvdVideo               = "dvd-video"
+	invalidDVDVideoProfile = "Invalid DVD Video profile: use one group, DVD-5/DVD-9 and PAL/NTSC"
+	tooManyDVDVideoClips   = "DVD Video supports at most 99 clips"
+)
+
 func newProject(lang string) core.Project {
 	return core.Project{Name: translate(lang, "Untitled project", "Tetikasa tsy misy anarana"), SampleRate: 44100, Bits: 16, Channels: 2, Capacity: "dvd5", ISO: true, Groups: []core.Group{{Name: groupName(lang, 1), Tracks: []string{}}}}
 }
@@ -60,6 +66,8 @@ func errorText(lang string, err error) string {
 			"unknown project format":                                          "Tsy fantatra ny karazana tetikasa",
 			"invalid Video CD profile: use one group, CD74/CD80 and PAL/NTSC": "Tsy mety ny safidy Video CD: vondrona iray, CD74/CD80 ary PAL/NTSC no ampiasao",
 			"Video CD supports at most 98 tracks":                             "Raki-peo 98 fara-fahabetsany ho an'ny Video CD",
+			invalidDVDVideoProfile:                                            "Tsy mety ny safidy DVD Video: vondrona iray, DVD-5/DVD-9 ary PAL/NTSC no ampiasao",
+			tooManyDVDVideoClips:                                              "Horonantsary 99 fara-fahabetsany ho an'ny DVD Video",
 		}
 		if translated, ok := messages[message]; ok {
 			return translated
@@ -70,6 +78,8 @@ func errorText(lang string, err error) string {
 	}
 	return translate(lang, "Error: ", "Hadisoana: ") + message
 }
+
+func fixedGroup(format string) bool { return format == "vcd" || format == dvdVideo }
 
 func hasTracks(p core.Project) bool {
 	for _, group := range p.Groups {
@@ -88,7 +98,7 @@ func cloneProject(p core.Project) core.Project {
 	return p
 }
 
-// Parsing checks structure without probing audio; core validates sources and capacity.
+// Parsing checks structure without probing media; core validates sources and capacity.
 func readProject(path string) (core.Project, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -164,27 +174,40 @@ func decodeProject(r io.Reader) (core.Project, error) {
 	if err := d.Decode(&extra); err != io.EOF {
 		return p, errors.New("expected a single project JSON object")
 	}
-	if len(p.Groups) < 1 || len(p.Groups) > 9 {
+	if p.Format != dvdVideo && (len(p.Groups) < 1 || len(p.Groups) > 9) {
 		return p, errors.New("use 1-9 groups")
 	}
 	if len(strings.TrimSpace(p.Name)) == 0 || len(p.Name) > 200 {
 		return p, errors.New("project name must contain 1-200 bytes")
 	}
-	if p.Format != "" && p.Format != "dvd-audio" && p.Format != "vcd" {
-		return p, errors.New("unknown project format")
-	}
-	if p.Format == "vcd" {
+	switch p.Format {
+	case "vcd":
 		if len(p.Groups) != 1 || (p.Capacity != "cd74" && p.Capacity != "cd80") || (p.VideoStandard != "" && p.VideoStandard != "pal" && p.VideoStandard != "ntsc") {
 			return p, errors.New("invalid Video CD profile: use one group, CD74/CD80 and PAL/NTSC")
 		}
-	} else if !slices.Contains([]int{44100, 48000, 88200, 96000, 176400, 192000}, p.SampleRate) || (p.Bits != 16 && p.Bits != 24) || (p.Channels != 1 && p.Channels != 2) || (p.Capacity != "dvd5" && p.Capacity != "dvd9") {
-		return p, errors.New("invalid PCM profile or media")
+	case dvdVideo:
+		if p.VideoStandard == "" {
+			p.VideoStandard = "pal"
+		}
+		if len(p.Groups) != 1 || (p.Capacity != "dvd5" && p.Capacity != "dvd9") || (p.VideoStandard != "pal" && p.VideoStandard != "ntsc") {
+			return p, errors.New(invalidDVDVideoProfile)
+		}
+		p.ISO = true
+	case "", "dvd-audio":
+		if !slices.Contains([]int{44100, 48000, 88200, 96000, 176400, 192000}, p.SampleRate) || (p.Bits != 16 && p.Bits != 24) || (p.Channels != 1 && p.Channels != 2) || (p.Capacity != "dvd5" && p.Capacity != "dvd9") {
+			return p, errors.New("invalid PCM profile or media")
+		}
+	default:
+		return p, errors.New("unknown project format")
 	}
 	for _, g := range p.Groups {
 		if p.Format == "vcd" && len(g.Tracks) > 98 {
 			return p, errors.New("Video CD supports at most 98 tracks")
 		}
 		if len(g.Tracks) > 99 {
+			if p.Format == dvdVideo {
+				return p, errors.New(tooManyDVDVideoClips)
+			}
 			return p, fmt.Errorf("%s: at most 99 tracks per group", g.Name)
 		}
 		for _, t := range g.Tracks {

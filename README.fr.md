@@ -6,8 +6,9 @@
 
 L'application s'appelle `kapila-maker` ; son dépôt GitHub garde le nom `kapila-burner`.
 
-Un atelier local pour créer des disques **DVD-Audio LPCM non compressé** et des
-images **Video CD 2.0**, avec une interface native GTK ou une interface web locale.
+Un atelier local pour créer des disques **DVD-Audio LPCM non compressé**, des ISO
+[**DVD-Video**](README.en.md#dvd-video) et des images **Video CD 2.0**, avec une
+interface native GTK ou une interface web locale.
 Les deux interfaces utilisent le même moteur, sans service en ligne.
 La création d'une image précède toute gravure : rien n'est gravé automatiquement.
 

@@ -46,7 +46,7 @@ type app struct {
 	loading, closed, busy, pending, polling, scanning, canceling bool
 	revision, scanRevision, jobRevision                          uint64
 	estimateCancel, scanCancel, startCancel                      context.CancelFunc
-	edit                                                         *gtk.Box
+	edit, audioProfile                                           *gtk.Box
 	name, groupName, filter                                      *gtk.Entry
 	groups, rate, bits, channels, media, language                *gtk.ComboBoxText
 	iso                                                          *gtk.CheckButton
@@ -76,7 +76,8 @@ type app struct {
 	actionButtons                                                map[string]*gtk.Button
 	capacity                                                     *gtk.ProgressBar
 	standard, recorder, speed                                    *gtk.ComboBoxText
-	formatNote                                                   *gtk.Label
+	formatNote, compilation                                      *gtk.Label
+	removeButton                                                 *gtk.Button
 	logDock                                                      *gtk.Expander
 	folder                                                       *gtk.Entry
 	recorderRevision                                             uint64
@@ -228,6 +229,21 @@ func plainLabel(s string) *gtk.Label {
 	return l
 }
 
+func setFormatVisible(w *gtk.Widget, visible bool) {
+	w.SetNoShowAll(!visible)
+	if visible {
+		w.ShowAll()
+	} else {
+		w.Hide()
+	}
+}
+
+func (a *app) showBurnControls(visible bool) {
+	setFormatVisible(&a.recorder.Widget, visible)
+	setFormatVisible(&a.speed.Widget, visible)
+	setFormatVisible(&a.actionButtons["burn"].Widget, visible)
+}
+
 func (a *app) constructEditor() *gtk.Box {
 	outer := box(true, 8)
 	outer.SetBorderWidth(12)
@@ -244,6 +260,8 @@ func (a *app) constructEditor() *gtk.Box {
 	projectRow.PackStart(a.standard, false, false, 0)
 	a.edit.PackStart(projectRow, false, false, 0)
 	profile := box(false, 8)
+	a.audioProfile = box(false, 8)
+	profile.PackStart(a.audioProfile, false, false, 0)
 	a.rate = combo("44100", "48000", "88200", "96000", "176400", "192000")
 	a.bits = combo("16", "24")
 	a.channels = combo("1", "2")
@@ -251,11 +269,14 @@ func (a *app) constructEditor() *gtk.Box {
 	for _, f := range []struct {
 		en, mg string
 		c      *gtk.ComboBoxText
-	}{{"Rate (Hz)", "Taham-peo (Hz)", a.rate}, {"Bits", "Bit", a.bits}, {"Channels", "Fantsona", a.channels}, {"Media", "Kapila", a.media}} {
-		profile.PackStart(a.label(f.en, f.mg), false, false, 0)
-		profile.PackStart(f.c, false, false, 0)
+	}{{"Rate (Hz)", "Taham-peo (Hz)", a.rate}, {"Bits", "Bit", a.bits}, {"Channels", "Fantsona", a.channels}} {
+		a.audioProfile.PackStart(a.label(f.en, f.mg), false, false, 0)
+		a.audioProfile.PackStart(f.c, false, false, 0)
 		f.c.Connect("changed", a.profileChanged)
 	}
+	profile.PackStart(a.label("Media", "Kapila"), false, false, 0)
+	profile.PackStart(a.media, false, false, 0)
+	a.media.Connect("changed", a.profileChanged)
 	a.iso, _ = gtk.CheckButtonNewWithLabel("ISO")
 	a.iso.Connect("toggled", a.profileChanged)
 	profile.PackStart(a.iso, false, false, 0)
@@ -355,7 +376,8 @@ func (a *app) constructEditor() *gtk.Box {
 		a.renderGroups()
 		a.changed()
 	})
-	right.PackStart(a.label("COMPILATION", "RAKI-PEO HO AN'NY KAPILA"), false, false, 0)
+	a.compilation = plainLabel("")
+	right.PackStart(a.compilation, false, false, 0)
 	columns := box(false, 8)
 	for i, pair := range [][2]string{{"#", "#"}, {"Filename", "Anaran-drakitra"}, {"Duration", "Faharetana"}, {"Source path", "Lalana niaviany"}} {
 		l := a.label(pair[0], pair[1])
@@ -371,7 +393,9 @@ func (a *app) constructEditor() *gtk.Box {
 	trackButtons := box(false, 6)
 	trackButtons.PackStart(a.button("Up", "Miakatra", func() { a.move(-1) }), false, false, 0)
 	trackButtons.PackStart(a.button("Down", "Midina", func() { a.move(1) }), false, false, 0)
-	trackButtons.PackStart(a.button("Remove track", "Esory ny raki-peo", a.removeTrack), false, false, 0)
+	a.removeButton, _ = gtk.ButtonNew()
+	a.removeButton.Connect("clicked", a.removeTrack)
+	trackButtons.PackStart(a.removeButton, false, false, 0)
 	right.PackStart(trackButtons, false, false, 0)
 	a.estimateStatus = plainLabel("")
 	a.estimateStatus.SetLineWrap(true)
@@ -428,10 +452,16 @@ func (a *app) constructEditor() *gtk.Box {
 }
 
 func (a *app) locked() bool { return a.busy || a.pending || a.canceling }
+
+func (a *app) canBuild() bool {
+	return a.active && !a.locked() && a.estimate != nil && a.estimate.Fits &&
+		(a.project.Format != dvdVideo || hasTracks(a.project))
+}
+
 func (a *app) setLocked(locked bool) {
 	a.busy = locked
 	a.edit.SetSensitive(!a.locked())
-	a.build.SetSensitive(a.active && !a.locked() && a.estimate != nil && a.estimate.Fits)
+	a.build.SetSensitive(a.canBuild())
 	a.cancel.SetSensitive(a.locked())
 	if a.canceling {
 		a.cancel.SetSensitive(false)
@@ -486,13 +516,14 @@ func (a *app) error(err error) {
 
 func (a *app) loadWidgets() {
 	a.loading = true
+	video := a.project.Format == dvdVideo
+	vcd := a.project.Format == "vcd"
 	a.name.SetText(a.project.Name)
 	a.rate.SetActiveID(strconv.Itoa(a.project.SampleRate))
 	a.bits.SetActiveID(strconv.Itoa(a.project.Bits))
 	a.channels.SetActiveID(strconv.Itoa(a.project.Channels))
-	a.media.SetActiveID(a.project.Capacity)
 	a.media.RemoveAll()
-	if a.project.Format == "vcd" {
+	if vcd {
 		a.media.Append("cd74", "CD 74 min")
 		a.media.Append("cd80", "CD 80 min")
 	} else {
@@ -504,33 +535,55 @@ func (a *app) loadWidgets() {
 	if a.project.VideoStandard == "" {
 		a.standard.SetActiveID("pal")
 	}
-	a.standard.SetSensitive(a.project.Format == "vcd")
-	a.standard.SetNoShowAll(true)
-	a.standard.SetVisible(a.project.Format == "vcd")
+	a.standard.SetSensitive(fixedGroup(a.project.Format))
+	setFormatVisible(&a.standard.Widget, fixedGroup(a.project.Format))
+	setFormatVisible(&a.audioProfile.Widget, !video)
+	a.showBurnControls(!a.active || !video)
+	a.groups.SetSensitive(!video)
 	for _, c := range []*gtk.ComboBoxText{a.rate, a.bits, a.channels} {
-		c.SetSensitive(a.project.Format != "vcd")
+		c.SetSensitive(!vcd && !video)
 	}
-	a.iso.SetSensitive(a.project.Format != "vcd")
-	if a.project.Format == "vcd" {
-		a.formatNote.SetText(a.t("VIDEO CD  /  MPEG-1 + MP2. Audio-only tracks use a static black picture. Image: CUE + BIN; CD-R/RW only.", "VIDEO CD  /  MPEG-1 + MP2. Sary mainty tsy mihetsika ho an'ny raki-peo. Sary kapila: CUE + BIN; CD-R/RW ihany."))
+	a.iso.SetSensitive(!vcd && !video)
+	if video {
+		a.formatNote.SetText(a.t("DVD VIDEO  /  Video clips only (1–99). PAL or NTSC, DVD-5 or DVD-9. Output: ISO image.", "DVD VIDEO  /  Horonantsary ihany (1–99). PAL na NTSC, DVD-5 na DVD-9. Vokatra: sary kapila ISO."))
+		a.compilation.SetText(a.t("VIDEO CLIPS", "HORONANTSARY"))
+		a.removeButton.SetLabel(a.t("Remove clip", "Esory ny horonantsary"))
+		a.actions["remove"].SetLabel(a.t("Remove Clip", "Esory ny horonantsary"))
 	} else {
+		a.compilation.SetText(a.t("COMPILATION", "RAKI-PEO HO AN'NY KAPILA"))
+		a.removeButton.SetLabel(a.t("Remove track", "Esory ny raki-peo"))
+		a.actions["remove"].SetLabel(a.t("Remove Track", "Esory ny raki-peo"))
+	}
+	if vcd {
+		a.formatNote.SetText(a.t("VIDEO CD  /  MPEG-1 + MP2. Audio-only tracks use a static black picture. Image: CUE + BIN; CD-R/RW only.", "VIDEO CD  /  MPEG-1 + MP2. Sary mainty tsy mihetsika ho an'ny raki-peo. Sary kapila: CUE + BIN; CD-R/RW ihany."))
+	} else if !video {
 		a.formatNote.SetText(a.t("DVD-AUDIO  /  Lossless PCM. Requires a true DVD-Audio player; MP3 expands to PCM.", "DVD-AUDIO  /  PCM tsy very kalitao. Mila mpamaky tena mahazaka DVD-Audio; miitatra ho PCM ny MP3."))
 	}
-	a.iso.SetActive(a.project.ISO)
+	a.iso.SetActive(video || a.project.ISO)
 	a.loading = false
 	a.renderGroups()
 	a.renderTracks()
+	a.updateLibraryRows()
 }
 func (a *app) profileChanged() {
 	if a.loading || a.locked() {
 		return
 	}
-	a.project.SampleRate, _ = strconv.Atoi(a.rate.GetActiveID())
-	a.project.Bits, _ = strconv.Atoi(a.bits.GetActiveID())
-	a.project.Channels, _ = strconv.Atoi(a.channels.GetActiveID())
+	if a.project.Format == dvdVideo {
+		a.project.ISO = true
+		if !a.iso.GetActive() {
+			a.loading = true
+			a.iso.SetActive(true)
+			a.loading = false
+		}
+	} else {
+		a.project.SampleRate, _ = strconv.Atoi(a.rate.GetActiveID())
+		a.project.Bits, _ = strconv.Atoi(a.bits.GetActiveID())
+		a.project.Channels, _ = strconv.Atoi(a.channels.GetActiveID())
+		a.project.ISO = a.iso.GetActive()
+	}
 	a.project.Capacity = a.media.GetActiveID()
-	a.project.ISO = a.iso.GetActive()
-	if a.project.Format == "vcd" {
+	if fixedGroup(a.project.Format) {
 		a.project.VideoStandard = a.standard.GetActiveID()
 	}
 	a.changed()
@@ -544,8 +597,8 @@ func clearList(l *gtk.ListBox) {
 		r.Destroy()
 	}
 }
-func addRow(l *gtk.ListBox, s string) *gtk.Label {
-	label := plainLabel(s)
+func addLibraryRow(l *gtk.ListBox) *gtk.Label {
+	label := plainLabel("")
 	label.SetSelectable(false)
 	label.SetMarginStart(6)
 	label.SetMarginEnd(6)
@@ -632,16 +685,31 @@ func (a *app) renderLibrary() {
 			continue
 		}
 		a.visible = append(a.visible, f)
-		a.libraryLabels = append(a.libraryLabels, addRow(a.library, a.libraryDetail(f)))
-		a.libraryLabels[len(a.libraryLabels)-1].SetTooltipText(a.libraryDetail(f))
-		if f.Error != "" {
-			r := a.library.GetRowAtIndex(len(a.visible) - 1)
-			r.SetSelectable(false)
-			r.SetSensitive(false)
-		}
+		a.libraryLabels = append(a.libraryLabels, addLibraryRow(a.library))
 	}
+	a.updateLibraryRows()
 	a.library.ShowAll()
 	a.showScanStatus()
+}
+
+func (a *app) canAddFile(f core.AudioFile) bool {
+	return f.Error == "" && (a.project.Format != dvdVideo || f.HasVideo)
+}
+
+func (a *app) updateLibraryRows() {
+	for i, f := range a.visible {
+		label := a.libraryLabels[i]
+		detail := a.libraryDetail(f)
+		label.SetText(detail)
+		label.SetTooltipText(detail)
+		row := a.library.GetRowAtIndex(i)
+		allowed := a.canAddFile(f)
+		if !allowed && row.IsSelected() {
+			a.library.UnselectRow(row)
+		}
+		row.SetSelectable(allowed)
+		row.SetSensitive(allowed)
+	}
 }
 
 func (a *app) showScanStatus() {
@@ -660,6 +728,12 @@ func (a *app) libraryDetail(f core.AudioFile) string {
 	if f.Error != "" {
 		return f.Path + "  [" + f.Error + "]"
 	}
+	if a.project.Format == dvdVideo {
+		if !f.HasVideo {
+			return f.Path + "  [" + a.t("Video required", "Mila horonantsary") + "]"
+		}
+		return f.Path + "\n" + formatDuration(f.Duration)
+	}
 	return fmt.Sprintf(a.t("%s\n%s  |  %d Hz, %d ch", "%s\n%s  |  %d Hz, %d fantsona"), f.Path, formatDuration(f.Duration), f.SampleRate, f.Channels)
 }
 func (a *app) addSelected() {
@@ -668,7 +742,7 @@ func (a *app) addSelected() {
 	}
 	var paths []string
 	for i, f := range a.visible {
-		if r := a.library.GetRowAtIndex(i); r != nil && r.IsSelected() && f.Error == "" {
+		if r := a.library.GetRowAtIndex(i); r != nil && r.IsSelected() && a.canAddFile(f) {
 			paths = append(paths, f.Path)
 		}
 	}
@@ -680,14 +754,18 @@ func (a *app) addSelected() {
 		return
 	}
 	if !appendTracks(&a.project.Groups[a.group], paths) {
-		a.error(fmt.Errorf("%s", a.t("At most 99 tracks per group", "Raki-peo 99 fara-fahabetsany isaky ny vondrona")))
+		if a.project.Format == dvdVideo {
+			a.error(fmt.Errorf("%s", tooManyDVDVideoClips))
+		} else {
+			a.error(fmt.Errorf("%s", a.t("At most 99 tracks per group", "Raki-peo 99 fara-fahabetsany isaky ny vondrona")))
+		}
 		return
 	}
 	a.renderTracks()
 	a.changed()
 }
 func (a *app) addGroup() {
-	if a.locked() || !a.active || a.project.Format == "vcd" || len(a.project.Groups) >= 9 {
+	if a.locked() || !a.active || fixedGroup(a.project.Format) || len(a.project.Groups) >= 9 {
 		return
 	}
 	a.project.Groups = append(a.project.Groups, core.Group{Name: groupName(a.lang, len(a.project.Groups)+1), Tracks: []string{}})
@@ -697,7 +775,7 @@ func (a *app) addGroup() {
 	a.changed()
 }
 func (a *app) deleteGroup() {
-	if a.locked() || len(a.project.Groups) <= 1 {
+	if a.locked() || fixedGroup(a.project.Format) || len(a.project.Groups) <= 1 {
 		return
 	}
 	if len(a.project.Groups[a.group].Tracks) > 0 && !a.confirm(a.t("Delete this group and its track list? Source files will not be changed.", "Hafafa ity vondrona sy lisitry ny raki-peo ity? Tsy ovaina ny rakitra niaviany.")) {
@@ -812,6 +890,10 @@ func (a *app) changed() {
 		a.estimateStatus.SetText("")
 		return
 	}
+	if a.project.Format == dvdVideo && !hasTracks(a.project) {
+		a.showEstimate()
+		return
+	}
 	glib.TimeoutAdd(350, func() bool {
 		if a.closed || seq != a.revision {
 			return false
@@ -839,6 +921,10 @@ func (a *app) changed() {
 }
 func (a *app) showEstimate() {
 	a.setLocked(a.busy)
+	if a.active && a.project.Format == dvdVideo && !hasTracks(a.project) {
+		a.estimateStatus.SetText(a.t("Add at least one video clip to estimate the DVD Video image.", "Ampio horonantsary iray farafahakeliny hanombanana ny sary kapila DVD Video."))
+		return
+	}
 	if a.estimate != nil {
 		e := a.estimate
 		fraction := 0.0
@@ -864,7 +950,20 @@ func (a *app) showEstimate() {
 			count += len(group.Tracks)
 		}
 		text, _ := a.estimateStatus.GetText()
-		a.estimateStatus.SetText(fmt.Sprintf(a.t("%d tracks | ", "%d raki-peo | "), count) + text)
+		if a.project.Format == dvdVideo {
+			text = fmt.Sprintf(a.t("%d video clips | ", "%d horonantsary | "), count) + text
+			if e.Fits && e.VideoWidth > 0 {
+				text += "\n" + fmt.Sprintf(a.t("Planned MPEG-2: %d px wide at %.2f Mb/s", "MPEG-2 kasaina: %d px ny sakany amin'ny %.2f Mb/s"), e.VideoWidth, float64(e.VideoBitrate)/1e6)
+			}
+			if !e.Fits && a.project.Capacity == "dvd5" {
+				text += "\n" + a.t("Remove clips or switch to DVD-9.", "Esory ny horonantsary sasany na mifidiana DVD-9.")
+			} else if !e.Fits {
+				text += "\n" + a.t("Remove clips to fit on DVD-9.", "Esory ny horonantsary sasany mba ho antonona amin'ny DVD-9.")
+			}
+		} else {
+			text = fmt.Sprintf(a.t("%d tracks | ", "%d raki-peo | "), count) + text
+		}
+		a.estimateStatus.SetText(text)
 	} else if a.estimateError != "" {
 		a.estimateStatus.SetText(a.estimateError)
 	}
@@ -886,6 +985,8 @@ func (a *app) toolStatus() (string, string) {
 		name := tool.Name
 		if name == "cdrdao" {
 			name += " (" + a.t("optional", "tsy voatery") + ")"
+		} else if name == "dvdauthor" || name == "dvd-video-mkisofs" {
+			name += " (DVD-Video)"
 		}
 		line := name + ": " + status
 		summary = append(summary, line)
@@ -916,10 +1017,6 @@ func (a *app) setLanguage(lang string) {
 	for _, t := range a.translations {
 		t.set(a.t(t.en, t.mg))
 	}
-	for i, label := range a.libraryLabels {
-		label.SetText(a.libraryDetail(a.visible[i]))
-		label.SetTooltipText(a.libraryDetail(a.visible[i]))
-	}
 	a.loadWidgets()
 	if a.recorder.GetActiveID() == "" {
 		a.recorder.RemoveAll()
@@ -936,7 +1033,7 @@ func (a *app) setLanguage(lang string) {
 }
 
 func (a *app) start() {
-	if a.smokeMode || !a.active || a.locked() || a.estimate == nil || !a.estimate.Fits {
+	if a.smokeMode || !a.canBuild() {
 		return
 	}
 	a.jobRevision++
@@ -1263,7 +1360,15 @@ func (a *app) smoke() {
 		a.smokeError = fmt.Errorf("GTK smoke Open lifecycle failed")
 	}
 	a.actions["close"].Activate()
+	if err := a.smokeDVDVideo(filepath.Join(dir, "video.json")); err != nil {
+		a.smokeError = err
+		a.shutdown()
+		return
+	}
 	a.actions["new-dvd"].Activate()
+	if !a.audioProfile.GetVisible() || !a.rate.GetVisible() || !a.rate.GetSensitive() || !a.iso.GetSensitive() || a.standard.GetVisible() || !a.recorder.GetVisible() {
+		a.smokeError = fmt.Errorf("GTK smoke DVD-Audio controls not restored after DVD Video")
+	}
 	a.files = a.files[:2]
 	a.renderLibrary()
 	a.library.SelectRow(a.library.GetRowAtIndex(0))
@@ -1327,7 +1432,7 @@ func (a *app) smoke() {
 	}
 	a.lastJob = nil
 	a.changed()
-	log.Print("GTK smoke: welcome, Project menus, DVD/VCD profiles, atomic Save, Save/Discard/Cancel, edit lock, invalid rows, ordering, en/fr/plt switching, About/confirmation/error dialogs, positive burn speeds, recorder IDs and missing-device guard; no authoring, burn or drive simulation")
+	log.Print("GTK smoke: welcome, Project menus, DVD-Audio/DVD Video/VCD profiles, atomic Save, Save/Discard/Cancel, edit lock, invalid rows, ordering, en/fr/plt switching, About/confirmation/error dialogs, positive burn speeds, recorder IDs and missing-device guard; no authoring, burn or drive simulation")
 	glib.TimeoutAdd(1000, func() bool {
 		if a.estimateError == "" {
 			a.smokeError = fmt.Errorf("GTK smoke: asynchronous estimate did not reject synthetic source paths")
@@ -1338,4 +1443,69 @@ func (a *app) smoke() {
 		a.shutdown()
 		return false
 	})
+}
+
+func (a *app) smokeDVDVideo(path string) error {
+	a.actions["new-dvd-video"].Activate()
+	if !a.active || a.project.Format != dvdVideo || a.project.Capacity != "dvd5" || a.project.VideoStandard != "pal" || !a.project.ISO || len(a.project.Groups) != 1 {
+		return fmt.Errorf("GTK smoke DVD Video creation failed")
+	}
+	if !a.standard.GetVisible() || !a.standard.GetSensitive() || !a.iso.GetActive() || a.iso.GetSensitive() || a.audioProfile.GetVisible() || a.rate.GetSensitive() || a.groups.GetSensitive() || a.actions["group-add"].GetSensitive() || a.actions["group-delete"].GetSensitive() {
+		return fmt.Errorf("GTK smoke DVD Video profile controls incorrect")
+	}
+	if a.actions["burn"].GetSensitive() || a.actionButtons["burn"].GetVisible() || a.actions["recorders"].GetSensitive() || a.recorder.GetVisible() || a.speed.GetVisible() {
+		return fmt.Errorf("GTK smoke VCD burn controls available for DVD Video")
+	}
+	a.standard.SetActiveID("ntsc")
+	a.media.SetActiveID("dvd9")
+	a.iso.SetActive(false)
+	a.addGroup()
+	a.deleteGroup()
+	if a.project.VideoStandard != "ntsc" || a.project.Capacity != "dvd9" || !a.iso.GetActive() || !a.project.ISO || len(a.project.Groups) != 1 {
+		return fmt.Errorf("GTK smoke DVD Video profile callbacks failed")
+	}
+	a.estimate = &core.Estimate{Fits: true}
+	a.showEstimate()
+	if a.build.GetSensitive() || a.actions["build"].GetSensitive() {
+		return fmt.Errorf("GTK smoke empty DVD Video draft enabled build")
+	}
+	oldFiles := a.files
+	a.files = []core.AudioFile{{Path: "video.mp4", HasVideo: true, Duration: 10}, {Path: "audio.wav", Duration: 5}}
+	a.renderLibrary()
+	video, audio := a.library.GetRowAtIndex(0), a.library.GetRowAtIndex(1)
+	a.library.SelectRow(video)
+	a.library.SelectRow(audio)
+	if audio.GetSensitive() || audio.IsSelected() || !video.IsSelected() {
+		return fmt.Errorf("GTK smoke DVD Video source eligibility failed")
+	}
+	a.addSelected()
+	if !slices.Equal(a.project.Groups[0].Tracks, []string{"video.mp4"}) {
+		return fmt.Errorf("GTK smoke DVD Video add clip failed")
+	}
+	a.estimate = &core.Estimate{Fits: true}
+	a.showEstimate()
+	if !a.build.GetSensitive() || !a.actions["build"].GetSensitive() {
+		return fmt.Errorf("GTK smoke fitting DVD Video estimate did not enable build")
+	}
+	a.estimate.Fits = false
+	for _, lang := range []string{"en", "fr", "plt"} {
+		a.language.SetActiveID(lang)
+		a.showEstimate()
+		status, _ := a.estimateStatus.GetText()
+		if a.build.GetSensitive() || a.actions["build"].GetSensitive() || !strings.Contains(status, a.t("TOO LARGE", "LEHIBE LOATRA")) || !strings.Contains(status, "DVD-9") {
+			return fmt.Errorf("GTK smoke %s oversized DVD Video estimate not shown or blocked", lang)
+		}
+	}
+	a.language.SetActiveID("en")
+	want := cloneProject(a.project)
+	if !a.saveTo(path) {
+		return fmt.Errorf("GTK smoke DVD Video save failed")
+	}
+	a.actions["close"].Activate()
+	if !a.openDocument(path) || a.dirty || !reflect.DeepEqual(a.project, want) {
+		return fmt.Errorf("GTK smoke DVD Video reopen failed")
+	}
+	a.actions["close"].Activate()
+	a.files = oldFiles
+	return nil
 }

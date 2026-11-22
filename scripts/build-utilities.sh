@@ -158,7 +158,7 @@ public static class UtilityLoaderDiagnostics {
     return "$status"
 }
 verify_payload() {
-    local root=$1 tool option name archive digest url license actual
+    local root=$1 tool option name archive digest url license actual encoders
     [[ -s $root/BUILD-UTILITIES.txt && -s $root/SOURCE-ARCHIVES/utility-sources.tsv ]] || return 1
     while read -r name archive digest url license; do
         [[ -n $name && $name != \#* ]] || continue
@@ -173,6 +173,9 @@ verify_payload() {
         esac
         "$root/tools/bin/$tool$exe" "$option" >/dev/null 2>&1 || return 1
     done
+    encoders=$("$root/tools/bin/ffmpeg$exe" -hide_banner -encoders) || return 1
+    grep -Eq '^[[:space:]]*V[^[:space:]]*[[:space:]]+mpeg2video[[:space:]]' <<< "$encoders" || return 1
+    grep -Eq '^[[:space:]]*A[^[:space:]]*[[:space:]]+ac3[[:space:]]' <<< "$encoders" || return 1
 }
 payload="$work/payload"
 if [[ -f $payload/.ready && $(< "$payload/.ready") == "$recipe" ]] && verify_payload "$payload"; then
@@ -360,7 +363,7 @@ run_utility "$stage/tools/bin/dvda-author$exe" -h
         --disable-autodetect --disable-network --disable-doc --disable-debug \
         --disable-ffplay --disable-x86asm --disable-inline-asm --disable-alsa \
         --disable-devices --enable-indev=lavfi --disable-shared --enable-static \
-        --disable-encoders --enable-encoder=pcm_s16le,pcm_s24le,mp2,mpeg1video \
+        --disable-encoders --enable-encoder=pcm_s16le,pcm_s24le,mp2,mpeg1video,mpeg2video,ac3 \
         --disable-filters \
         --enable-filter=abuffer,abuffersink,aresample,aformat,anull,anullsrc,buffer,buffersink,null,color,sine,scale,pad,setsar,setdar,format,fps,tpad,apad
     "$make" -j"$jobs"
@@ -459,7 +462,7 @@ done
     "$bin/mkisofs$exe" -version
     printf '\nAuthor configured with --enable-core-build; private static FFmpeg 4.2.4 (--disable-programs).\n'
     printf 'Private FFmpeg: only file/WAV, PCM16/24/32 and MLP decoders, MLP encoder/muxer/parser, and audio conversion filters.\n'
-    printf 'Public FFmpeg: all built-in input decoders/demuxers and muxers; output encoders limited to PCM16/24, MP2 and MPEG-1 video.\n'
+    printf 'Public FFmpeg: all built-in input decoders/demuxers and muxers; output encoders limited to PCM16/24, MP2, MPEG-1 video, MPEG-2 video and AC-3.\n'
     printf 'Public filters: buffer/sink, aresample/aformat/anull/anullsrc, color/sine, scale/pad/setsar/setdar/format/fps/tpad/apad.\n'
     printf 'Windows mkisofs uses native x86-64 MinGW rules (OSNAME=mingw32_nt), not Cygwin/MSYS libc.\n'
     printf 'Windows dvda-author statically links MinGW runtime dependencies (-static -static-libgcc); winpthreads MIT/BSD notice is bundled.\n'

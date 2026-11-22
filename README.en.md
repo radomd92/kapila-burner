@@ -7,9 +7,10 @@
 The application is named `kapila-maker`; its GitHub repository keeps the name `kapila-burner`.
 
 A local web or native GTK workspace for authoring uncompressed LPCM DVD-Audio
-disc trees/ISOs and true Video CD 2.0 BIN/CUE images. DVD-Audio is not DVD-Video
-or an MP3 data disc and requires a compatible DVD-Audio player. VCD uses lossy
-MPEG-1 video and MP2 audio for compatible VCD players. Authoring is image-first;
+disc trees/ISOs, [DVD-Video ISOs](#dvd-video), and true Video CD 2.0 BIN/CUE images.
+DVD-Audio is not DVD-Video or an MP3 data disc and requires a compatible
+DVD-Audio player. VCD uses lossy MPEG-1 video and MP2 audio for compatible VCD
+players. Authoring is image-first;
 only GTK offers an explicitly confirmed physical VCD burn, never automatic burning.
 
 ## Download
@@ -276,13 +277,12 @@ to request cancellation; keep the engine alive until the job finishes.
 
 ## Dependencies
 
-**Published release bundles:** all five
-image-authoring executables are bundled, including source-built FFmpeg/FFprobe
+**Published release bundles:** five executables are bundled: source-built FFmpeg/FFprobe
 **9.0.2**, VCDImager **2.0.1**, the `dvda-author` core, and genuine DVD-Audio-capable
 `mkisofs`. Pinned versions, source URLs and hashes are recorded in
 [`scripts/utility-sources.tsv`](scripts/utility-sources.tsv), including the pinned
 DVD-Audio and Schilytools commits. Windows and macOS also bundle GTK and the
-required non-system libraries/data.
+required non-system libraries/data. DVD-Video requires a separate `dvdauthor` installation.
 
 The native utilities are source-built with patches for upstream heap and
 working-directory/`BINDIR` bugs. A private, statically linked legacy FFmpeg
@@ -297,12 +297,14 @@ use `libcdio19t64`, `libiso9660-11t64`, and `libpopt0`. `cdrdao` is optional
 and used only for physical VCD burning, not image authoring. Tool roles:
 
 - `ffprobe` inspects source duration and format; `ffmpeg` converts the first
-  audio stream to PCM WAV for DVD-Audio or transcodes video/audio for VCD.
+  audio stream to PCM WAV for DVD-Audio or transcodes video/audio for VCD and DVD-Video.
   In source builds, both normally come from `PATH`.
 - `dvda-author` authors DVD-Audio navigation and audio objects.
-- `mkisofs` packages the disc tree and must support genuine `-dvd-audio`.
-  A `genisoimage` substitute without that option is not sufficient. This tool
-  is unnecessary when ISO creation is disabled.
+- `dvdauthor` (no hyphen) authors DVD-Video and is not bundled. Install it
+  separately and put it on `PATH` or set `DVDAUTHOR`.
+- For DVD-Audio ISOs, `mkisofs` must support genuine `-dvd-audio`; `genisoimage`
+  is not a substitute. The bundled `mkisofs` also supports `-dvd-video`, which
+  `genisoimage` can provide for DVD-Video only.
 - `vcdimager` creates Video CD 2.0 BIN/CUE images; DVD tools are not needed for VCD.
 - `cdrdao` is needed only for Linux GTK physical VCD burning or optional drive simulation,
   not image authoring or web downloads.
@@ -327,6 +329,8 @@ Explicit executable overrides take precedence:
 | `FFPROBE` | `ffprobe` |
 | `DVDA_AUTHOR` | `dvda-author` |
 | `MKISOFS` | `mkisofs` with `-dvd-audio` support |
+| `DVDAUTHOR` | External `dvdauthor` for DVD-Video |
+| `DVD_VIDEO_MKISOFS` | Optional DVD-Video ISO builder with `-dvd-video` support (e.g. `mkisofs` or `genisoimage`) |
 | `VCDIMAGER` | `vcdimager` |
 | `CDRDAO` | `cdrdao` |
 
@@ -400,6 +404,21 @@ matching sources cannot be collected, rather than publish incomplete sources.
 Project and group names are organizational labels in the JSON manifest,
 not on-disc text or player-visible titles. There are no visual menus, MLP
 compression, multichannel output, or DRM features.
+
+## DVD-Video
+
+1. Create a DVD-Video project and choose **PAL** or **NTSC** and **DVD-5** or
+   **DVD-9** capacity. Add **1-99 video clips** to a single group and arrange
+   them in playback order.
+2. Review the estimate and create the ISO. Two-pass MPEG-2 encoding adapts the
+   bitrate to the selected capacity and switches to Half-D1 when needed. The
+   app measures the final ISO and retries at a lower bitrate if it runs over. If
+   the project still cannot fit at the minimum acceptable bitrate, it is
+   rejected rather than encoded below the quality floor. The first audio
+   stream is converted to stereo AC-3; clips without audio get a silent track.
+3. The authored disc autoplays the clips in order, with chapter points and
+   no menus. DVD-Video output is an ISO image; the app does not burn DVDs or
+   author a DVD-9 layer break. DVD-9 selects the capacity budget only.
 
 ## Video CD
 
@@ -608,10 +627,10 @@ make test
 # Optional native adapter checks, using system GTK dev files or the overlay:
 make test-gtk
 make smoke-gtk
-# Real VCD authoring, as enabled in Linux CI (no physical burn):
-VCD_INTEGRATION=1 make test
-# Local DVD-Audio + VCD integration, with all tools provisioned:
-DVDA_INTEGRATION=1 VCD_INTEGRATION=1 go test -race ./...
+# Real VCD and DVD-Video authoring, as enabled in Linux CI (no physical burn):
+VCD_INTEGRATION=1 DVD_VIDEO_INTEGRATION=1 make test
+# Local DVD-Audio, VCD and DVD-Video integration, with all tools provisioned:
+DVDA_INTEGRATION=1 VCD_INTEGRATION=1 DVD_VIDEO_INTEGRATION=1 go test -race ./...
 ```
 
 `make test` runs `go test -race ./...` and `go vet ./...` without GTK build
@@ -643,7 +662,9 @@ hardware playback. For additional manual smoke commands, see
 The [CI workflow](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 builds native GTK and web archives on Ubuntu 22.04, Windows Server 2022, and
 Intel macOS 15. Linux runs race tests, vet, GTK tests, and the three-language
-widget smoke checks, with `VCD_INTEGRATION=1` for real VCD image authoring.
+widget smoke checks, with `VCD_INTEGRATION=1` and `DVD_VIDEO_INTEGRATION=1` for
+real VCD and DVD-Video image authoring. It installs `dvdauthor` and `genisoimage`
+for the DVD-Video test.
 Bundling CI source-builds the native utilities and validates real DVD-Audio ISO
 and PAL/NTSC VCD BIN/CUE images with a stripped `PATH`, plus three-language GTK
 smoke tests on all three platforms. Installer and relocated macOS `.app` checks

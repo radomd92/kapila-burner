@@ -41,9 +41,13 @@ func TestLocalizedProjectErrors(t *testing.T) {
 		"project JSON exceeds 2 MiB", "refusing to overwrite a non-regular file", "cannot export over a source track",
 		"expected a single project JSON object", "use 1-9 groups", "project name must contain 1-200 bytes",
 		"invalid PCM profile or media", "empty track path",
+		invalidDVDVideoProfile, tooManyDVDVideoClips,
 	} {
 		err := errors.New(message)
 		if got := errorText("plt", err); strings.Contains(got, message) {
+			t.Fatalf("untranslated validation: %s", got)
+		}
+		if got := errorText("fr", err); strings.Contains(got, message) {
 			t.Fatalf("untranslated validation: %s", got)
 		}
 		if got := errorText("en", err); !strings.Contains(got, message) {
@@ -198,6 +202,54 @@ func TestBurnEligibility(t *testing.T) {
 	a.rememberAuthoredImage(a.lastJob)
 	if !a.burnReady() {
 		t.Fatal("completed VCD author image not eligible")
+	}
+}
+
+func TestDVDVideoProjectJSON(t *testing.T) {
+	p := core.Project{Format: dvdVideo, Name: "Video", Capacity: "dvd9", VideoStandard: "ntsc", ISO: true, Groups: []core.Group{{Name: "Group 1", Tracks: []string{}}}}
+	decode := func(p core.Project) (core.Project, error) {
+		b, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return decodeProject(strings.NewReader(string(b)))
+	}
+	if got, err := decode(p); err != nil || !reflect.DeepEqual(got, p) {
+		t.Fatalf("empty draft round trip: %+v %v", got, err)
+	}
+	clips := make([]string, 99)
+	for i := range clips {
+		clips[i] = "video.mp4"
+	}
+	if !appendTracks(&p.Groups[0], clips) || appendTracks(&p.Groups[0], []string{"extra.mp4"}) {
+		t.Fatal("DVD Video clip limit not enforced when adding clips")
+	}
+	if got, err := decode(p); err != nil || !reflect.DeepEqual(got, p) {
+		t.Fatalf("99 clips round trip: %+v %v", got, err)
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(*core.Project)
+		want string
+	}{
+		{"wrong capacity", func(p *core.Project) { p.Capacity = "cd80" }, invalidDVDVideoProfile},
+		{"wrong standard", func(p *core.Project) { p.VideoStandard = "secam" }, invalidDVDVideoProfile},
+		{"no groups", func(p *core.Project) { p.Groups = nil }, invalidDVDVideoProfile},
+		{"two groups", func(p *core.Project) { p.Groups = append(p.Groups, core.Group{}) }, invalidDVDVideoProfile},
+		{"100 clips", func(p *core.Project) { p.Groups[0].Tracks = append(p.Groups[0].Tracks, "extra.mp4") }, tooManyDVDVideoClips},
+		{"empty path", func(p *core.Project) { p.Groups[0].Tracks[0] = "" }, "empty track path"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bad := cloneProject(p)
+			tc.edit(&bad)
+			if _, err := decode(bad); err == nil || err.Error() != tc.want {
+				t.Fatalf("decode error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	p.Capacity, p.VideoStandard, p.ISO = "dvd5", "", false
+	if got, err := decode(p); err != nil || got.VideoStandard != "pal" || !got.ISO {
+		t.Fatalf("PAL and ISO defaults: %+v %v", got, err)
 	}
 }
 

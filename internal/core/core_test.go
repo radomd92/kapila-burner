@@ -506,8 +506,11 @@ func TestIntegration(t *testing.T) {
 	cwd = filepath.Clean(filepath.Join(cwd, "../.."))
 	tools := discoverTools(cwd)
 	for _, tool := range tools {
-		if !tool.Ready {
-			t.Fatalf("required tool %s unavailable: %s (%s)", tool.Name, tool.Detail, tool.Path)
+		switch tool.Name {
+		case "ffmpeg", "ffprobe", "dvda-author", "mkisofs":
+			if !tool.Ready {
+				t.Fatalf("required tool %s unavailable: %s (%s)", tool.Name, tool.Detail, tool.Path)
+			}
 		}
 	}
 	for _, profile := range []struct {

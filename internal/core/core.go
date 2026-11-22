@@ -54,6 +54,8 @@ type Estimate struct {
 	EstimatedBytes int64   `json:"estimatedBytes"`
 	CapacityBytes  int64   `json:"capacityBytes"`
 	WorkspaceBytes int64   `json:"workspaceBytes"`
+	VideoBitrate   int64   `json:"videoBitrate,omitempty"`
+	VideoWidth     int     `json:"videoWidth,omitempty"`
 	Fits           bool    `json:"fits"`
 }
 type Tool struct {
@@ -238,6 +240,9 @@ func (s *Engine) Close() {
 }
 
 func (s *Engine) Start(ctx context.Context, p Project) (*Job, error) {
+	if p.Format == "dvd-video" {
+		p.ISO = true
+	}
 	// The caller retains ownership of all slices, even while the background job runs.
 	p.Groups = slices.Clone(p.Groups)
 	for i := range p.Groups {
@@ -274,11 +279,17 @@ func (s *Engine) Start(ctx context.Context, p Project) (*Job, error) {
 		if p.Format == "vcd" {
 			return nil, errorf(ctx, "VCD exceeds selected CD capacity")
 		}
+		if p.Format == "dvd-video" {
+			return nil, errorf(ctx, "DVD-Video cannot fit at the minimum supported quality")
+		}
 		return nil, errorf(ctx, "Decoded PCM exceeds disc capacity")
 	}
 	dependencies := []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs"}
 	if p.Format == "vcd" {
 		dependencies = []string{"ffmpeg", "ffprobe", "vcdimager"}
+	}
+	if p.Format == "dvd-video" {
+		dependencies = []string{"ffmpeg", "ffprobe", "dvdauthor", "dvd-video-mkisofs"}
 	}
 	for _, name := range dependencies {
 		if name == "mkisofs" && !p.ISO {
@@ -286,6 +297,11 @@ func (s *Engine) Start(ctx context.Context, p Project) (*Job, error) {
 		}
 		if s.toolPath(name) == "" {
 			return nil, classified(ctx, ErrDependencies, "%s is unavailable or incompatible; check tool status", name)
+		}
+	}
+	if p.Format == "dvd-video" {
+		if err := s.checkDVDVideoEncoders(ctx); err != nil {
+			return nil, err
 		}
 	}
 	if err := ctx.Err(); err != nil {
@@ -298,6 +314,9 @@ func (s *Engine) Start(ctx context.Context, p Project) (*Job, error) {
 	if uint64(e.WorkspaceBytes) > available {
 		if p.Format == "vcd" {
 			return nil, errorf(ctx, "Not enough free workspace for MPEG tracks and VCD image")
+		}
+		if p.Format == "dvd-video" {
+			return nil, errorf(ctx, "Not enough free workspace for MPEG tracks, VIDEO_TS and the ISO")
 		}
 		return nil, errorf(ctx, "Not enough free workspace for PCM, disc structure and ISO")
 	}
@@ -322,11 +341,11 @@ func discoverTools(app string) []Tool {
 
 func discoverToolsFor(app, bundle, goos string) []Tool {
 	var tools []Tool
-	for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager", "cdrdao"} {
+	for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager", "dvdauthor", "cdrdao"} {
 		if name == "cdrdao" && goos != "linux" {
 			continue
 		}
-		path := os.Getenv(map[string]string{"ffmpeg": "FFMPEG", "ffprobe": "FFPROBE", "dvda-author": "DVDA_AUTHOR", "mkisofs": "MKISOFS", "vcdimager": "VCDIMAGER", "cdrdao": "CDRDAO"}[name])
+		path := os.Getenv(map[string]string{"ffmpeg": "FFMPEG", "ffprobe": "FFPROBE", "dvda-author": "DVDA_AUTHOR", "mkisofs": "MKISOFS", "vcdimager": "VCDIMAGER", "dvdauthor": "DVDAUTHOR", "cdrdao": "CDRDAO"}[name])
 		toolRoot := ""
 		if name != "cdrdao" {
 			roots := []string{bundle}
@@ -379,7 +398,7 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 			t.Path = abs
 		}
 		arg := "-version"
-		if name == "dvda-author" || name == "mkisofs" {
+		if name == "dvda-author" || name == "dvdauthor" || name == "mkisofs" {
 			arg = "--help"
 		}
 		if name == "vcdimager" || name == "cdrdao" {
@@ -400,6 +419,15 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 		output, runErr := cmd.CombinedOutput()
 		cancel()
 		t.Ready = runErr == nil
+		if name == "dvdauthor" {
+			// Upstream help prints usage but may exit 1 when no standard is set.
+			var exit *exec.ExitError
+			t.Ready = (runErr == nil || (errors.As(runErr, &exit) && exit.ExitCode() == 1)) &&
+				strings.Contains(string(output), "syntax: dvdauthor") && strings.Contains(string(output), "-x XMLFILE")
+			if !t.Ready {
+				t.Detail = "Requires dvdauthor with XML authoring support"
+			}
+		}
 		if name == "cdrdao" {
 			// cdrdao 1.2.x returns status 1 for help. This command parses
 			// usage only; unlike scanbus/drive-info it never opens a drive.
@@ -422,7 +450,7 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 		}
 		tools = append(tools, t)
 	}
-	return tools
+	return append(tools, discoverDVDVideoISO(tools))
 }
 
 func (s *Engine) toolPath(name string) string {
@@ -680,11 +708,14 @@ func (s *Engine) Estimate(ctx context.Context, p Project) (Estimate, error) {
 	if p.Format == "vcd" {
 		return s.estimateVCD(ctx, p)
 	}
+	if p.Format == "dvd-video" {
+		return s.estimateDVDVideo(ctx, p)
+	}
 	if p.Format != "" && p.Format != "dvd-audio" {
-		return e, errorf(ctx, "Format must be dvd-audio or vcd")
+		return e, errorf(ctx, "Format must be dvd-audio, dvd-video or vcd")
 	}
 	if p.VideoStandard != "" {
-		return e, errorf(ctx, "Video standard is only available for VCD")
+		return e, errorf(ctx, "Video standard is only available for DVD-Video and VCD")
 	}
 	if p.Bits != 16 && p.Bits != 24 {
 		return e, errorf(ctx, "Choose 16-bit or 24-bit PCM")
@@ -879,6 +910,10 @@ func (s *Engine) runJob(ctx context.Context, p Project, e Estimate, dir string) 
 	}
 	if p.Format == "vcd" {
 		runErr = s.runVCD(ctx, p, e, dir)
+		return
+	}
+	if p.Format == "dvd-video" {
+		runErr = s.runDVDVideo(ctx, p, e, dir)
 		return
 	}
 	s.appendLog(text(ctx, "Preparing %.2f hours of audio; estimated disc size %.2f GB. Source files will not be modified.", e.Duration/3600, float64(e.EstimatedBytes)/1e9))

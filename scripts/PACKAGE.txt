@@ -11,13 +11,13 @@ Windows x86-64:
 - Install using kapila-maker-windows-amd64-setup.exe (per-user, no admin needed),
   or extract the entire ZIP and run kapila-maker.exe / launch-gtk.cmd.
 - GTK, all required DLLs/data, FFmpeg, FFprobe, VCDImager, dvda-author and genuine
-  DVD-Audio mkisofs are included. No MSYS2, Go, or separate utility installs needed.
+  mkisofs are included. No MSYS2 or Go required; see below for DVD-Video.
 - Do not move a single EXE away from its bundled runtime directory.
 
 macOS 15 or newer, Intel x86-64:
 - Open the DMG and copy kapila-maker.app to Applications, or extract the archive.
-- GTK and all five authoring utilities and their non-system libraries are included.
-  No Homebrew, Go, FFmpeg installation or PATH setup is required on the user's Mac.
+- GTK and the five bundled utilities and their non-system libraries are included.
+  No Homebrew, Go or FFmpeg installation is required; see below for DVD-Video.
 - The app is ad-hoc signed, NOT Developer ID signed or notarized. Follow normal
   Gatekeeper/organization policy; do not disable system-wide security protections.
 - No Apple Silicon native build is claimed.
@@ -26,8 +26,8 @@ Linux x86-64:
 - The release is built on Ubuntu 22.04 and requires a compatible glibc system.
 - Extract the entire archive and run ./kapila-maker or ./kapila-maker-web.
   Keep tools/ and BUILD-UTILITIES.txt beside the executables.
-- FFmpeg, FFprobe, VCDImager, dvda-author and DVD-Audio mkisofs are included.
-  No separate authoring tool installation or PATH setup is required.
+- FFmpeg, FFprobe, VCDImager, dvda-author and mkisofs are included.
+  No separate tool installation or PATH setup is required for DVD-Audio or VCD images.
 - The desktop app uses system GTK 3; VCDImager uses system shared libraries.
   On Ubuntu 22.04: libgtk-3-0 (desktop), libcdio19 libiso9660-11 libpopt0 (VCD).
   On Ubuntu 24.04 / Linux Mint 22: libgtk-3-0t64 (desktop),
@@ -44,9 +44,22 @@ For the web interface, run kapila-maker-web[.exe] -root /path/to/media, then ope
 the loopback URL printed in the terminal, normally http://127.0.0.1:8787.
 Keep the terminal open. Do not expose the service to a network.
 
+DVD-Video (ISO only):
+- Install dvdauthor separately (not the bundled DVD-Audio tool dvda-author).
+  Put it on PATH or set DVDAUTHOR to its absolute executable path.
+- The bundled mkisofs supports -dvd-video. Optionally set DVD_VIDEO_MKISOFS
+  to a compatible executable, such as genisoimage. Do not use genisoimage
+  for DVD-Audio, which requires mkisofs with genuine -dvd-audio support.
+- Choose PAL or NTSC and DVD-5 or DVD-9. Add up to 99 video clips to one
+  group in playback order. Clips autoplay in order with chapters and no menus.
+- Two-pass adaptive MPEG-2 encoding uses Half-D1 when needed. Projects that
+  cannot fit without going below the quality floor are rejected. The first
+  audio stream becomes stereo AC-3; clips without audio get silence.
+- No physical DVD burning or DVD-9 layer-break authoring.
+
 Only Linux supports optional, explicitly confirmed physical VCD writing with
-cdrdao. Windows/macOS create complete DVD-Audio ISO and VCD BIN/CUE images;
-write those images using external recording software. No CI job burns a disc.
+cdrdao. Use external recording software for DVD ISOs and for VCD BIN/CUE
+images on Windows/macOS. No CI job burns a disc.
 
 Corresponding utility/runtime sources and patches are published beside these
 downloads in the matching -sources.tar.gz archive. Keep license notices intact.

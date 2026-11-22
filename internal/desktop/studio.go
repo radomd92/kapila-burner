@@ -98,6 +98,7 @@ func (a *app) construct() {
 	sep := func(m *gtk.Menu) { s, _ := gtk.SeparatorMenuItemNew(); m.Append(s) }
 	p := menu("Project", "Tetikasa")
 	item(p, "new-dvd", "New DVD-Audio", "DVD-Audio vaovao", "<Primary>n", func() { a.newDocument("dvd-audio") })
+	item(p, "new-dvd-video", "New DVD Video", "DVD Video vaovao", "", func() { a.newDocument(dvdVideo) })
 	item(p, "new-vcd", "New Video CD", "Video CD vaovao", "<Primary><Shift>n", func() { a.newDocument("vcd") })
 	sep(p)
 	item(p, "open", "Open...", "Sokafy...", "<Primary>o", func() { a.chooseProject(false) })
@@ -129,7 +130,7 @@ func (a *app) construct() {
 	item(v, "log", "Show / Hide Job Log", "Asehoy / afeno ny tatitra", "<Primary>l", func() { a.logDock.SetExpanded(!a.logDock.GetExpanded()) })
 	h := menu("Help", "Fanampiana")
 	item(h, "about", "About kapila-maker", "Momba ny kapila-maker", "", func() {
-		d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("kapila-maker\nNative DVD-Audio & Video CD authoring\n\nDVD: lossless PCM for DVD-Audio players.\nVCD: MPEG-1 video + MP2 sound; audio uses a black picture.\nCreate an image first. Burning always requires confirmation.\nSource files are never modified.", "kapila-maker\nFanamboarana DVD-Audio sy Video CD\n\nDVD: PCM tsy very kalitao ho an'ny mpamaky DVD-Audio.\nVCD: MPEG-1 sy MP2; sary mainty ho an'ny feo.\nMamorona sary kapila aloha. Mila fanekena ny fandoroana.\nTsy ovaina ny rakitra niaviany."))
+		d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("kapila-maker\nNative DVD-Audio, DVD Video & Video CD authoring\n\nDVD-Audio: lossless PCM for DVD-Audio players.\nDVD Video: video clips in a DVD ISO image.\nVCD: MPEG-1 video + MP2 sound; audio uses a black picture.\nCreate an image first. Burning always requires confirmation.\nSource files are never modified.", "kapila-maker\nFanamboarana DVD-Audio, DVD Video ary Video CD\n\nDVD-Audio: PCM tsy very kalitao ho an'ny mpamaky DVD-Audio.\nDVD Video: horonantsary ao anaty sary kapila DVD ISO.\nVCD: MPEG-1 sy MP2; sary mainty ho an'ny feo.\nMamorona sary kapila aloha. Mila fanekena ny fandoroana.\nTsy ovaina ny rakitra niaviany."))
 		d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
 		defer a.destroyDialog(&d.Dialog)
 		a.runDialog(&d.Dialog)
@@ -200,6 +201,7 @@ func (a *app) construct() {
 	tiles.SetHomogeneous(true)
 	for _, spec := range []struct{ id, icon, en, mg, detail, detailMG string }{
 		{"new-dvd", "media-optical-dvd", "DVD Audio", "DVD Audio", "LOSSLESS LISTENING\nHigh-resolution PCM, up to 9 groups.\nDVD-5 / DVD-9 image authoring.", "FEO TSY VERY KALITAO\nPCM avo kalitao, vondrona 9 hatramin'ny.\nSary kapila DVD-5 / DVD-9."},
+		{"new-dvd-video", "media-optical-dvd", "DVD Video", "DVD Video", "DVD VIDEO DISC\nUp to 99 video clips, PAL / NTSC.\nDVD-5 / DVD-9 ISO image.", "KAPILA DVD VIDEO\nHoronantsary hatramin'ny 99, PAL / NTSC.\nSary kapila ISO DVD-5 / DVD-9."},
 		{"new-vcd", "media-optical-cd", "Video CD", "Video CD", "CLASSIC VIDEO DISC\nMusic or video, PAL / NTSC.\n74 / 80 minute CD, CUE + BIN image.", "KAPILA VIDEO MAHAZATRA\nFeo na video, PAL / NTSC.\nCD 74 / 80 minitra, sary CUE + BIN."},
 	} {
 		id := spec.id
@@ -255,6 +257,7 @@ func (a *app) updateActions() {
 		return
 	}
 	free := !a.locked()
+	video := a.active && a.project.Format == dvdVideo
 	for id, item := range a.actions {
 		enabled := free
 		switch id {
@@ -263,13 +266,15 @@ func (a *app) updateActions() {
 		case "save", "save-as", "close", "add", "remove", "up", "down":
 			enabled = free && a.active
 		case "group-add":
-			enabled = free && a.active && a.project.Format != "vcd" && len(a.project.Groups) < 9
+			enabled = free && a.active && !fixedGroup(a.project.Format) && len(a.project.Groups) < 9
 		case "group-delete":
-			enabled = free && a.active && len(a.project.Groups) > 1
+			enabled = free && a.active && !fixedGroup(a.project.Format) && len(a.project.Groups) > 1
 		case "build":
-			enabled = free && a.active && a.estimate != nil && a.estimate.Fits
+			enabled = a.canBuild()
 		case "burn":
 			enabled = free && a.burnReady() && a.recorder != nil && a.recorder.GetActiveID() != ""
+		case "recorders":
+			enabled = free && !video
 		case "refresh":
 			enabled = free && a.active && !a.scanning
 		}
@@ -282,8 +287,8 @@ func (a *app) updateActions() {
 		a.welcome.SetSensitive(free)
 	}
 	if a.recorder != nil {
-		a.recorder.SetSensitive(free)
-		a.speed.SetSensitive(free)
+		a.recorder.SetSensitive(free && !video)
+		a.speed.SetSensitive(free && !video)
 	}
 }
 
@@ -295,10 +300,15 @@ func (a *app) newDocument(format string) {
 	a.authorJobID = ""
 	a.project = newProject(a.lang)
 	a.project.Format = format
-	if format == "vcd" {
+	switch format {
+	case "vcd":
 		a.project.Capacity = "cd80"
 		a.project.VideoStandard = "pal"
 		a.project.Name = a.t("Untitled Video CD", "Video CD tsy misy anarana")
+	case dvdVideo:
+		a.project.VideoStandard = "pal"
+		a.project.Name = a.t("Untitled DVD Video", "DVD Video tsy misy anarana")
+		a.project.SampleRate, a.project.Bits, a.project.Channels = 0, 0, 0
 	}
 	a.saved = core.Project{}
 	a.projectPath = ""
@@ -386,6 +396,7 @@ func (a *app) closeDocument() {
 	a.burnSource = nil
 	a.authorJobID = ""
 	a.active = false
+	a.showBurnControls(true)
 	a.dirty = false
 	a.projectPath = ""
 	a.stack.SetVisibleChildName("welcome")
@@ -461,7 +472,7 @@ func (a *app) rememberAuthoredImage(j *core.Job) {
 
 func (a *app) burnReady() bool {
 	j := a.burnSource
-	return a.active && j != nil && j.ID != "" && j.State == "completed" && j.Format == "vcd" && j.Kind == "author" && strings.EqualFold(filepath.Ext(j.Output), ".cue") && reflect.DeepEqual(a.project, a.burnProject)
+	return a.active && a.project.Format != dvdVideo && j != nil && j.ID != "" && j.State == "completed" && j.Format == "vcd" && j.Kind == "author" && strings.EqualFold(filepath.Ext(j.Output), ".cue") && reflect.DeepEqual(a.project, a.burnProject)
 }
 
 func (a *app) burn() {

@@ -6,7 +6,8 @@
 
 `kapila-maker` no anaran'ny rindranasa; mitazona ny anarana `kapila-burner` ny tahiry GitHub.
 
-Fitaovana eo an-toerana hanamboarana **DVD-Audio LPCM** sy **Video CD 2.0**.
+Fitaovana eo an-toerana hanamboarana **DVD-Audio LPCM**,
+[**DVD-Video**](README.en.md#dvd-video) ary **Video CD 2.0**.
 Misafidiana ny rindranasa GTK na ny fampiasana amin'ny mpitety tranonkala.
 Tsy mila tolotra an-tserasera izy ireo ary mampiasa motera iray ihany.
 

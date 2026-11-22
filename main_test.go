@@ -190,6 +190,18 @@ func TestDecodeVCDProject(t *testing.T) {
 		t.Fatalf("VCD round trip: %s, %v", data, err)
 	}
 }
+
+func TestDecodeDVDVideoProjectAlwaysRequestsISO(t *testing.T) {
+	const body = `{"name":"DVD-Video","format":"dvd-video","videoStandard":"ntsc","capacity":"dvd9","iso":false,"groups":[{"name":"Clips","tracks":["a.mp4"]}]}`
+	for _, path := range []string{"/api/estimate", "/api/jobs"} {
+		r := httptest.NewRequest("POST", path, strings.NewReader(body))
+		p, err := decodeProject(httptest.NewRecorder(), r)
+		if err != nil || p.Format != "dvd-video" || !p.ISO || p.VideoStandard != "ntsc" || p.Capacity != "dvd9" || p.SampleRate != 0 {
+			t.Fatalf("%s: decoded project %+v, %v", path, p, err)
+		}
+	}
+}
+
 func TestHandlerGuardsAndMethods(t *testing.T) {
 	const address = "127.0.0.1:8787"
 	h := testAdapter(t).handler(address)
