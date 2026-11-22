@@ -404,3 +404,63 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
   void  pipe_to_child_stdin(const char* name,
                            char** args,
                            int GCC_UNUSED  buffer_size,
+--- a/src/ats2wav.c
++++ b/src/ats2wav.c
+@@ -32,6 +32,9 @@
+ #include "winport.h"
+ #include "multichannel.h"
+ #include "auxiliary.h"
++#ifndef _WIN32
++#include <signal.h>
++#endif
+ 
+ // limiting extern for PODs : issues with MSYS2 compiler under Windows
+ 
+@@ -876,18 +879,12 @@
+     return wav_numbytes;
+ }
+ 
+-#if defined _WIN32 && defined __NO_ISOCEXT
+-static void usleep(unsigned int usec)
++#ifdef _WIN32
++static void sleep_microseconds(uint64_t usec)
+ {
+-    HANDLE timer;
+-    LARGE_INTEGER ft;
+-
+-    ft.QuadPart = -(10 * (__int64)usec);
+-
+-    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+-    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+-    WaitForSingleObject(timer, INFINITE);
+-    CloseHandle(timer);
++    uint64_t milliseconds = usec / 1000 + (usec % 1000 != 0);
++    if (milliseconds >= INFINITE) milliseconds = INFINITE - 1;
++    Sleep((DWORD) milliseconds);
+ }
+ #endif
+ 
+@@ -1308,7 +1305,11 @@
+ 
+                             if (spread > 0) // surely always the case, checking for paranoia
+                             {
++#ifdef _WIN32
++                                 sleep_microseconds((uint64_t) spread);
++#else
+                                  usleep((unsigned int)  spread);
++#endif
+                             }
+                         }
+ 
+@@ -1650,7 +1651,11 @@
+               // does not seem to work for OSX yet OK for Linux
+               // but for OSX, -autoexit does work...
+ 
++#ifdef _WIN32
++              sleep_microseconds((uint64_t) wait_time * 1000000);
++#else
+               usleep(lrint(ceil(wait_time * 1000000.0)));
++#endif
+           }
+ 
+ 
