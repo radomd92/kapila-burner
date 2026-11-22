@@ -1,0 +1,76 @@
+Core-build and native-header fixes; retain bundle path options in core mode.
+Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
+--- a/configure.ac
++++ b/configure.ac
+@@ -52,4 +52,3 @@
+ # probably spurious on most platforms yet useful on MSYS
+-CPPFLAGS="$CPPFLAGS -I/usr/include -I/usr/local/include"
+ #default configuration
+ #by default, link, do not build, and use Ogg FLAC:
+--- a/src/command_line_parsing.c
++++ b/src/command_line_parsing.c
+@@ -271,6 +271,7 @@
+     {"no-refresh-outdir", no_argument, NULL, 5},
+     {"extract", required_argument, NULL, 'x'},
+     {"xlist", required_argument, NULL, 13},
++    {"bindir", required_argument, NULL, 3},
+ #if !defined HAVE_core_BUILD || !HAVE_core_BUILD
+     {"videodir", required_argument, NULL, 'V'},
+     {"fixwav", optional_argument, NULL, 'F'},
+@@ -315,7 +316,6 @@
+     {"pad-cont", no_argument, NULL, 'C'},
+     {"lossy-rounding", no_argument, NULL, 'L'},
+     {"background-colors", required_argument, NULL, 2},
+-    {"bindir", required_argument, NULL, 3},
+     {"topmenu-slides", required_argument, NULL, 6},
+     {"check-version", no_argument, NULL, 8},
+     {"import-topmenu", required_argument, NULL, 9},
+@@ -937,6 +937,7 @@
+           k += m - 1;
+           break;
+ 
++#ifndef WITHOUT_sox
+         case '-':
+           if(! user_command_line || strcmp(argv[k], "--resample") != 0) break;
+ 
+@@ -970,6 +971,7 @@
+ 
+           k += m - 1;
+           break;
++#endif
+         }
+     }
+ 
+@@ -1245,6 +1247,16 @@
+                                0, NULL, NULL, globals);
+           break;
++#if defined HAVE_core_BUILD && HAVE_core_BUILD
++        case 3:
++          free(globals->settings.bindir);
++          globals->settings.bindir = make_absolute(optarg);
++          break;
++        case '9':
++          free(globals->settings.datadir);
++          globals->settings.datadir = make_absolute(optarg);
++          break;
++#endif
+ #if !defined HAVE_core_BUILD || !HAVE_core_BUILD
+ 
+         case '9':
+           /* --datadir is the directory where the menu/ files are
+--- a/src/launch_manager.c
++++ b/src/launch_manager.c
+@@ -102,7 +102,7 @@
+-    uint8_t pathlength=strlen(globals->settings.outdir);
++    size_t pathlength=strlen(globals->settings.outdir);
+ 
+     char audiotsdir[pathlength+10];
+     char videotsdir[pathlength+10];
+ 
+     sprintf(audiotsdir, "%s"SEPARATOR"AUDIO_TS", globals->settings.outdir);
+ 
+@@ -111,3 +111,3 @@
+-    STRING_WRITE_CHAR_BUFSIZ(videotsdir, "%s"SEPARATOR"VIDEO_TS", globals->settings.outdir)
++    snprintf(videotsdir, sizeof(videotsdir), "%s"SEPARATOR"VIDEO_TS", globals->settings.outdir);
+     if (globals->videozone && !globals->nooutput) secure_mkdir(videotsdir, globals->access_rights, globals);
+         errno=0;

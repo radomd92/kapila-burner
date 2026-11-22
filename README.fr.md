@@ -11,8 +11,20 @@ La création d'une image précède toute gravure : rien n'est gravé automatique
 
 ## Télécharger
 
-Dernière compilation réussie de la branche par défaut, publiée en **préversion
-continue** (`continuous`) :
+Préversion continue (`continuous`), actualisée après une CI réussie.
+
+**Transition en cours : la vérification des nouveaux paquets est en attente.**
+La version actuellement publiée reste l'ancienne, avec outils d'authoring externes.
+Les liens des nouveaux installateurs ci-dessous sont **indisponibles jusqu'à la
+réussite et à la publication de la nouvelle CI**. Le ZIP Windows et le tar.gz
+macOS gardent leurs noms et seront remplacés à cette publication. Les descriptions
+des nouveaux paquets ci-dessous ne prouvent pas leur validation ni leur disponibilité.
+
+Installateurs (publication en attente) :
+[Windows EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-setup.exe)
+| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.dmg)
+
+Alternatives portables (les fichiers publiés sont encore les anciens) :
 
 | Plateforme | Archive |
 | --- | --- |
@@ -24,8 +36,6 @@ continue** (`continuous`) :
 | [Page de la préversion](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
 | [Workflow CI et artefacts](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 
-La [première exécution CI hébergée](https://github.com/radomd92/kapila-burner/actions/runs/44952181031)
-a compilé les trois archives avec succès et publié ces téléchargements.
 Chaque exécution réussie suivante actualise cette préversion. Les pull requests
 produisent des artefacts Actions conservés **14 jours**, sans publication de
 release. Les tags `v*` publient des versions distinctes.
@@ -33,16 +43,37 @@ release. Les tags `v*` publient des versions distinctes.
 Chaque archive contient **`kapila-burner`** (GTK natif) et
 **`kapila-burner-web`** (web portable), avec l'extension `.exe` sous Windows.
 Extrayez l'archive avant utilisation. Le programme web ne nécessite pas GTK.
+Le nouveau tar.gz macOS contient aussi **`Kapila Burner.app`**, ainsi que les
+exécutables natif/web de commodité. Les nouveaux paquets Windows/macOS incluent
+GTK, toutes les bibliothèques non système et données nécessaires et les cinq
+outils de création d'images, pour les deux interfaces.
 
 | Plateforme | Exigences de l'interface GTK |
 | --- | --- |
 | Linux | Ubuntu 22.04 ou plus récent, ou distribution compatible, avec GTK 3 système (`libgtk-3-0` sous Ubuntu) et une session graphique. |
-| Windows | Les DLL GTK et leurs données sont incluses. Conservez **tout le dossier extrait** et lancez `launch-gtk.cmd`, pas un `.exe` déplacé seul. |
-| macOS | Compilation Intel macOS 15, liée à Homebrew GTK 3 dans `/usr/local` : `brew install gtk+3`. Ce n'est ni une application autonome ni un paquet `.app`. Les exécutables sont **non signés et non notariés**. |
+| Windows | Installez l'EXE ou conservez **tout le dossier ZIP extrait** et lancez `kapila-burner.exe` / `launch-gtk.cmd`, pas un `.exe` déplacé seul. Les DLL GTK, bibliothèques et données sont incluses. |
+| macOS | Intel macOS 15 ou plus récent. Ouvrez le DMG et glissez l'application autonome **`Kapila Burner.app`** dans Applications, ou utilisez le tar.gz. GTK, bibliothèques et données sont incluses ; aucun Homebrew requis. |
 
-Aucun exécutable ARM n'est publié. Les outils de conversion et d'authoring
-doivent être installés séparément sur **chaque plateforme**. La gravure physique
-de VCD est réservée à **Linux**, avec `cdrdao` et confirmation explicite.
+Aucun exécutable ARM n'est publié. Sous Linux, GTK système et les outils
+d'authoring externes restent nécessaires. La gravure physique de VCD est réservée
+à **Linux**, avec `cdrdao` facultatif et confirmation explicite. La gravure n'est
+pas prise en charge sous Windows/macOS : utilisez un logiciel externe pour graver
+les images. Ce logiciel n'est **pas requis pour créer les images** ; rien n'est
+gravé automatiquement.
+
+L'installateur Windows s'installe par utilisateur dans
+`%LOCALAPPDATA%\Programs\KapilaBurner`, sans droits administrateur, avec raccourcis
+et désinstalleur. Il est **non signé** : Windows/SmartScreen peut afficher un
+avertissement ; aucun certificat de signature de code n'est revendiqué.
+L'application macOS porte une **signature ad hoc, sans signature Developer ID ni
+notarisation**. Respectez les règles normales de Gatekeeper et de votre organisation,
+sans désactiver les protections globales. Les utilisateurs des nouveaux paquets
+Windows/macOS n'ont besoin ni de Homebrew, MSYS2, Go, Python, shell, compilateur,
+installation d'outils séparée, ni de configuration du `PATH`. Les outils de
+compilation CI ne sont pas des prérequis utilisateur.
+
+Après publication, `SHA256SUMS` couvrira **sept fichiers** : trois archives
+portables, deux installateurs (EXE/DMG) et deux archives de sources correspondantes.
 
 Téléchargez `SHA256SUMS` pour vérifier l'intégrité des archives. Sous Linux :
 
@@ -57,7 +88,9 @@ Ces sommes de contrôle **ne sont pas des signatures cryptographiques**.
 
 ## Démarrer
 
-Depuis le dossier extrait, sous Linux ou macOS :
+Sous Windows, utilisez le raccourci installé ; sous macOS, ouvrez
+`Kapila Burner.app` dans Applications. Aucun terminal n'est nécessaire pour ces
+lancements graphiques. En option, depuis le dossier extrait sous Linux ou macOS :
 
 ```sh
 ./kapila-burner -root /path/to/media
@@ -69,7 +102,8 @@ Depuis le dossier extrait, sous Linux ou macOS :
 ./kapila-burner-web -root /path/to/media
 ```
 
-Sous Windows, ouvrez `launch-gtk.cmd` ou lancez depuis PowerShell :
+Avec le ZIP portable Windows, ouvrez `kapila-burner.exe` / `launch-gtk.cmd`, ou
+lancez depuis PowerShell :
 
 ```powershell
 .\launch-gtk.cmd -root C:\Music -lang fr
@@ -77,10 +111,13 @@ Sous Windows, ouvrez `launch-gtk.cmd` ou lancez depuis PowerShell :
 .\kapila-burner-web.exe -root C:\Music
 ```
 
-Remplacez la racine par votre dossier de médias. Lancez depuis le dossier de
-l'application : la recherche des outils et le dossier `output/` par défaut
-dépendent du **répertoire de travail**, pas de l'emplacement de l'exécutable.
-L'option `-output` permet de choisir un autre dossier de sortie.
+Les nouveaux paquets Windows/macOS trouvent les outils relativement à l'exécutable,
+depuis **n'importe quel répertoire de travail**. Par défaut, les médias viennent du
+dossier Music de l'utilisateur et les sorties vont dans `Kapila Burner/output`
+sous son cache utilisateur. `-root` et `-output` remplacent ces valeurs.
+Les compilations source et Linux conservent les anciens défauts relatifs au
+répertoire courant : médias dans `..`, sorties dans `./output` et recherche locale
+des outils. Remplacez la racine des exemples par votre dossier de médias.
 
 Pour le web, ouvrez l'URL exacte affichée, normalement **http://127.0.0.1:8787**.
 Gardez le terminal ouvert ; `Ctrl-C` arrête le serveur et annule le travail actif.
@@ -114,9 +151,14 @@ des médias** : les sources doivent rester aux mêmes chemins relatifs à la rac
 
 ## Outils Externes
 
-**Aucun des outils suivants n'est inclus dans les archives**, sur aucune
-plateforme. Vérifiez leur disponibilité et leur compatibilité sur votre OS.
-Leur état et leur chemin apparaissent dans l'interface.
+Les **nouveaux paquets Windows/macOS, encore en attente de validation/publication**,
+incluent les cinq outils de création d'images compilés depuis les sources :
+FFmpeg/FFprobe **9.0.2**, VCDImager **2.0.1**, le coeur `dvda-author` et un véritable
+`mkisofs` compatible DVD-Audio. Les versions/commits épinglés, URL et empreintes
+figurent dans le [manifeste des sources](scripts/utility-sources.tsv).
+Sous **Linux**, installez toujours séparément les cinq outils selon le type de
+disque ; `cdrdao` reste facultatif pour la gravure. Leur état et leur chemin
+apparaissent dans l'interface.
 
 | Fonction | Outils nécessaires |
 | --- | --- |
@@ -126,11 +168,27 @@ Leur état et leur chemin apparaissent dans l'interface.
 | Gravure VCD GTK, Linux uniquement | `cdrdao`, un graveur CD et un CD-R/CD-RW vierge. |
 
 Vous pouvez imposer des chemins absolus avec `FFMPEG`, `FFPROBE`, `DVDA_AUTHOR`,
-`MKISOFS`, `VCDIMAGER` et `CDRDAO`. Sans surcharge, seuls `dvda-author` et
+`MKISOFS`, `VCDIMAGER` et `CDRDAO`. Les nouveaux paquets Windows/macOS trouvent leurs
+outils inclus relativement à l'exécutable, sans configuration du `PATH`.
+Pour les compilations source/Linux sans surcharge, seuls `dvda-author` et
 `mkisofs` sont recherchés dans `./tools/bin/` avant le `PATH` ; les autres
 utilisent le `PATH`. Redémarrez l'interface après un changement d'outils.
 Consultez le [guide détaillé](README.en.md#dependencies) pour les outils locaux
 facultatifs et leurs limites de portabilité.
+
+### Sources Et Licences
+
+Les archives correspondantes
+[`kapila-burner-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-sources.tar.gz)
+et
+[`kapila-burner-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64-sources.tar.gz)
+seront publiées avec les nouveaux paquets ; elles sont aussi en attente.
+**Elles ne sont pas nécessaires pour exécuter l'application.** Elles contiennent
+les archives sources exactes des formules du runtime macOS, toutes les sources
+des paquets MSYS2 correspondants, les sources originales des utilitaires, les
+correctifs, scripts et licences. Conservez les notices ; chaque composant garde
+sa licence. Le [guide anglais](README.en.md#corresponding-sources) décrit les
+manifestes et la reconstruction facultative des utilitaires hors ligne.
 
 ## Créer Un DVD-Audio
 
@@ -190,6 +248,9 @@ Chaque travail conserve son dossier `output/disc-*/`, avec `project.json`,
 ont leur propre dossier `output/burn-*/`. Les échecs et annulations conservent
 les fichiers partiels ; il n'y a pas de nettoyage automatique. `job.json` est
 écrit à la fin, avec un journal limité aux 600 dernières lignes.
+Ces chemins sont relatifs à la racine de sortie choisie : par défaut, cache
+utilisateur `Kapila Burner/output` pour les nouveaux paquets Windows/macOS,
+`./output` pour les compilations source/Linux.
 
 Pour un DVD ISO, prévoyez environ **trois fois la taille du PCM**, plus une
 marge : intermédiaires, arborescence et ISO coexistent. Le moteur contrôle
@@ -236,12 +297,16 @@ le système cible avec ses dépendances de développement GTK.
 La CI compile les deux interfaces sur Ubuntu 22.04, Windows Server 2022 et
 macOS 15 Intel. Sous Linux, elle exécute les tests avec détection de courses,
 vet, les tests GTK, les smoke tests dans les trois langues via Xvfb et la
-création réelle de VCD avec `VCD_INTEGRATION=1`. **Les outils DVD-Audio ne sont
-pas provisionnés et `DVDA_INTEGRATION` n'est pas activé dans la CI hébergée** :
-c'est une vérification locale/manuelle facultative. Aucun test CI ne grave de disque.
+création réelle de VCD avec `VCD_INTEGRATION=1`. La nouvelle CI de bundling prévoit
+la compilation source des utilitaires Windows/macOS, la création réelle d'images
+DVD-Audio et VCD avec un `PATH` nettoyé et le contrôle d'une `.app` déplacée.
+La collecte des sources doit échouer si des sources correspondantes manquent.
+**Ces nouveaux contrôles sont encore en attente, pas validés.** Aucun test CI
+ne grave de disque ni ne vérifie la lecture sur matériel.
 
-La première exécution hébergée a compilé et publié les deux interfaces pour
-les trois systèmes. Les contrôles graphiques GTK sont exécutés sous Linux ;
-sous Windows et macOS, la vérification se limite au lancement avec `-h`.
+Les anciens succès CI ne prouvent pas le bon fonctionnement des nouveaux paquets.
+Les contrôles graphiques GTK restent sous Linux ; les nouveaux tests d'images et
+de déplacement Windows/macOS vont au-delà de l'ancien lancement avec `-h`, sans
+prouver l'interaction graphique. Consultez les logs CI et les fichiers publiés.
 Pour contribuer, créez une branche depuis `main`,
 exécutez les vérifications pertinentes et ouvrez une pull request vers `main`.

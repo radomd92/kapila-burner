@@ -32,15 +32,27 @@ printf '\nBuild platform: %s\nGo: %s\nCommit: %s\n' \
 
 case "$os" in
   windows)
+    native_python=$(cygpath -u "${PYTHON_NATIVE:?Native Windows Python is required}")
+    bash scripts/build-utilities.sh "$package"
     bash scripts/bundle-windows.sh "$package"
-    "$package/kapila-burner.exe" -h
+    bash scripts/collect-runtime-sources.sh "$package"
+    tar -czf "dist/$name-sources.tar.gz" -C "$package" SOURCE-ARCHIVES THIRD-PARTY-LICENSES WINDOWS-RUNTIME-PACKAGES.txt WINDOWS-RUNTIME-FILES.tsv BUILD-UTILITIES.txt
+    rm -rf -- "$package/SOURCE-ARCHIVES"
     cp scripts/launch-gtk.cmd "$package/launch-gtk.cmd"
+    "$native_python" scripts/smoke-bundle.py "$package"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 \
+      -Stage "$(cygpath -w "$package")" -OutputDir "$(cygpath -w dist)"
     (cd dist && zip -qr "$name.zip" "$name")
     ;;
   darwin)
-    # Keep Homebrew install names intact: this archive requires Homebrew GTK.
-    otool -L "$package/kapila-burner" > "$package/GTK-LINKAGE.txt"
-    "$package/kapila-burner" -h
+    # Utility build scripts need modern Bash; the system Bash is version 3.2.
+    "$(brew --prefix bash)/bin/bash" scripts/build-utilities.sh "$package"
+    bash scripts/bundle-macos.sh "$package"
+    bash scripts/collect-runtime-sources.sh "$package"
+    tar -czf "dist/$name-sources.tar.gz" -C "$package" SOURCE-ARCHIVES THIRD-PARTY-LICENSES MACOS-RUNTIME-MANIFEST.json BUILD-UTILITIES.txt
+    rm -rf -- "$package/SOURCE-ARCHIVES"
+    python3 scripts/smoke-bundle.py "$package"
+    bash scripts/make-macos-app.sh "$package" dist
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
   linux)

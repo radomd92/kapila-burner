@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"dvd-audio-studio/internal/i18n"
+	"dvd-audio-studio/internal/runtimeenv"
 )
 
 type AudioFile struct {
@@ -56,10 +57,11 @@ type Estimate struct {
 	Fits           bool    `json:"fits"`
 }
 type Tool struct {
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	Ready  bool   `json:"ready"`
-	Detail string `json:"detail"`
+	bundleRoot string
+	Name       string `json:"name"`
+	Path       string `json:"path"`
+	Ready      bool   `json:"ready"`
+	Detail     string `json:"detail"`
 }
 type Job struct {
 	Format string   `json:"format,omitempty"`
@@ -130,6 +132,12 @@ func New(c Config) (*Engine, error) {
 	root, err := canonical(c.Root)
 	if err != nil {
 		return nil, fmt.Errorf("library root: %w", err)
+	}
+	if c.App == "" {
+		c.App, err = ApplicationDir()
+		if err != nil {
+			return nil, err
+		}
 	}
 	app, err := canonical(c.App)
 	if err != nil {
@@ -305,29 +313,45 @@ func (s *Engine) Start(ctx context.Context, p Project) (*Job, error) {
 	return cloneJob(s.job), nil
 }
 
+// ApplicationDir returns the native bundle root, or cwd for local development.
+func ApplicationDir() (string, error) { return runtimeenv.ApplicationDir() }
+
 func discoverTools(app string) []Tool {
+	return discoverToolsFor(app, runtimeenv.BundleRoot(), runtime.GOOS)
+}
+
+func discoverToolsFor(app, bundle, goos string) []Tool {
 	var tools []Tool
 	for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager", "cdrdao"} {
 		path := os.Getenv(map[string]string{"ffmpeg": "FFMPEG", "ffprobe": "FFPROBE", "dvda-author": "DVDA_AUTHOR", "mkisofs": "MKISOFS", "vcdimager": "VCDIMAGER", "cdrdao": "CDRDAO"}[name])
-		if path == "" && (runtime.GOOS == "windows" || (runtime.GOOS == "linux" && (name == "dvda-author" || name == "mkisofs"))) {
-			localName := name
-			if runtime.GOOS == "windows" {
-				localName += ".exe"
+		toolRoot := ""
+		if goos == "windows" || goos == "darwin" {
+			for _, root := range []string{bundle, app} {
+				if root == "" {
+					continue
+				}
+				localName := name
+				if goos == "windows" {
+					localName += ".exe"
+				}
+				local := filepath.Join(root, "tools", "bin", localName)
+				if info, err := os.Stat(local); err == nil && info.Mode().IsRegular() && (path == "" || path == local) {
+					path, toolRoot = local, root
+					break
+				}
 			}
-			local := filepath.Join(app, "tools", "bin", localName)
+		}
+		if path == "" && goos == "linux" && (name == "dvda-author" || name == "mkisofs") {
+			local := filepath.Join(app, "tools", "bin", name)
 			if _, err := os.Stat(local); err == nil {
-				if runtime.GOOS == "windows" {
+				// Tracked Linux launchers require an ignored payload. Custom
+				// local binaries can be selected with DVDA_AUTHOR or MKISOFS.
+				payload := filepath.Join(app, "tools", "opt", "dvda-author", "dvda")
+				if name == "mkisofs" {
+					payload = filepath.Join(app, "tools", "opt", "dvda-author", "bin", "mkisofs")
+				}
+				if info, err := os.Stat(payload); err == nil && info.Mode().IsRegular() {
 					path = local
-				} else {
-					// Tracked Linux launchers require an ignored payload. Custom
-					// local binaries can be selected with DVDA_AUTHOR or MKISOFS.
-					payload := filepath.Join(app, "tools", "opt", "dvda-author", "dvda")
-					if name == "mkisofs" {
-						payload = filepath.Join(app, "tools", "opt", "dvda-author", "bin", "mkisofs")
-					}
-					if info, err := os.Stat(payload); err == nil && info.Mode().IsRegular() {
-						path = local
-					}
 				}
 			}
 		}
@@ -337,7 +361,7 @@ func discoverTools(app string) []Tool {
 				path, _ = exec.LookPath("dvda-author-dev")
 			}
 		}
-		t := Tool{Name: name, Path: path}
+		t := Tool{Name: name, Path: path, bundleRoot: toolRoot}
 		if path == "" {
 			t.Detail = "Not found; see README.md"
 			tools = append(tools, t)
@@ -360,6 +384,7 @@ func discoverTools(app string) []Tool {
 			checkArgs = []string{"write", "--help"}
 		}
 		cmd := exec.CommandContext(ctx, t.Path, checkArgs...)
+		cmd.Env = runtimeenv.CommandEnv(t.bundleRoot)
 		configureProcess(cmd)
 		output, runErr := cmd.CombinedOutput()
 		cancel()
@@ -397,6 +422,33 @@ func (s *Engine) toolPath(name string) string {
 	}
 	return ""
 }
+
+func (s *Engine) toolBundleRoot(path string) string {
+	for _, tool := range s.tools {
+		if tool.Path == path {
+			return tool.bundleRoot
+		}
+	}
+	return ""
+}
+
+func (s *Engine) runtimePath(path string) bool {
+	for _, root := range []string{s.app, runtimeenv.BundleRoot()} {
+		if root == "" {
+			continue
+		}
+		for _, name := range []string{"tools", "lib", "share", "etc"} {
+			protected := filepath.Join(root, name)
+			if resolved, err := filepath.EvalSymlinks(protected); err == nil {
+				protected = resolved
+			}
+			if within(protected, path) {
+				return true
+			}
+		}
+	}
+	return false
+}
 func within(root, path string) bool {
 	rel, err := filepath.Rel(root, path)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
@@ -409,7 +461,7 @@ func (s *Engine) source(ctx context.Context, path string) (string, error) {
 	if err != nil {
 		return "", errorf(ctx, "Cannot read source: %s", err)
 	}
-	if !within(s.root, full) || within(s.output, full) || within(filepath.Join(s.app, "tools"), full) {
+	if !within(s.root, full) || within(s.output, full) || s.runtimePath(full) {
 		return "", errorf(ctx, "Source is outside the audio library: %s", path)
 	}
 	info, err := os.Stat(full)
@@ -450,6 +502,7 @@ func (s *Engine) probe(ctx context.Context, path string) AudioFile {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, s.toolPath("ffprobe"), "-v", "error", "-show_entries", "format=duration:stream=codec_type,sample_rate,channels,duration:stream_disposition=attached_pic", "-of", "json", full)
+	cmd.Env = runtimeenv.CommandEnv(s.toolBundleRoot(cmd.Path))
 	configureProcess(cmd)
 	b, err := cmd.Output()
 	var data struct {
@@ -515,7 +568,7 @@ func (s *Engine) Library(ctx context.Context) ([]AudioFile, error) {
 			return err
 		}
 		if d.IsDir() {
-			if path != s.root && (within(s.output, path) || path == s.app || within(filepath.Join(s.app, "tools"), path) || strings.HasPrefix(d.Name(), ".")) {
+			if s.runtimePath(path) || (path != s.root && (within(s.output, path) || path == s.app || strings.HasPrefix(d.Name(), "."))) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -657,8 +710,25 @@ func (s *Engine) command(ctx context.Context, dir, path string, args ...string) 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	root := s.toolBundleRoot(path)
+	if root != "" && path == s.toolPath("dvda-author") {
+		// Native upstream binaries do not have the Linux scratch-dir wrapper.
+		scratch, err := os.MkdirTemp(dir, ".dvda-author-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(scratch)
+		for _, name := range []string{"audio", "lplex", "lplex-output"} {
+			if err := os.MkdirAll(filepath.Join(scratch, name), 0700); err != nil {
+				return err
+			}
+		}
+		prefix := []string{"-W", "--bindir", filepath.Join(root, "tools", "bin"), "--datadir", filepath.Join(root, "tools", "share", "dvda-author"), "--workdir", dir, "-D", filepath.Join(scratch, "audio"), "--lplex-tempdir", filepath.Join(scratch, "lplex"), "--lplex-output", filepath.Join(scratch, "lplex-output")}
+		args = append(prefix, args...)
+	}
 	s.appendLog("$ " + filepath.Base(path) + " " + strings.Join(args, " "))
 	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.Env = runtimeenv.CommandEnv(root)
 	cmd.Dir = dir
 	configureProcess(cmd)
 	r, w, err := os.Pipe()
@@ -845,7 +915,7 @@ func (s *Engine) runJob(ctx context.Context, p Project, e Estimate, dir string) 
 	output := discDir
 	if p.ISO {
 		output = filepath.Join(dir, "dvd-audio.iso")
-		if runErr = s.command(ctx, dir, s.toolPath("mkisofs"), "-dvd-audio", "-V", "DVD_AUDIO", "-o", output, discDir); runErr != nil {
+		if runErr = s.command(ctx, dir, s.toolPath("mkisofs"), "-dvd-audio", "-udf", "-V", "DVD_AUDIO", "-o", output, discDir); runErr != nil {
 			return
 		}
 		info, err := os.Stat(output)

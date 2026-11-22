@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>io.github.radomd92.kapila-burner</string>
+  <key>CFBundleName</key><string>Kapila Burner</string>
+  <key>CFBundleDisplayName</key><string>Kapila Burner</string>
+  <key>CFBundleExecutable</key><string>kapila-burner</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1.0</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>LSMinimumSystemVersion</key><string>15.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDevelopmentRegion</key><string>mg</string>
+  <key>CFBundleLocalizations</key><array><string>mg</string><string>en</string><string>fr</string></array>
+</dict></plist>

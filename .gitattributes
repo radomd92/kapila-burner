@@ -1,0 +1,2 @@
+# Unified diffs need a leading context marker even on empty source lines.
+scripts/patches/*.patch -whitespace

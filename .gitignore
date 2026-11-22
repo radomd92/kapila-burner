@@ -5,6 +5,9 @@
 /dvd-audio-studio.exe
 /dvd-audio-gtk.exe
 /dist/
+/.utility-build/
+__pycache__/
+*.pyc
 
 # Large extracted tool payloads and package archives, not tools/bin launchers.
 /tools/opt/

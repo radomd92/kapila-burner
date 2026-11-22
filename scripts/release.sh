@@ -9,6 +9,10 @@ assets=(
   kapila-burner-linux-amd64.tar.gz
   kapila-burner-windows-amd64.zip
   kapila-burner-macos-amd64.tar.gz
+  kapila-burner-windows-amd64-setup.exe
+  kapila-burner-macos-amd64.dmg
+  kapila-burner-windows-amd64-sources.tar.gz
+  kapila-burner-macos-amd64-sources.tar.gz
 )
 for asset in "${assets[@]}"; do
   test -s "dist/$asset"
@@ -35,9 +39,12 @@ fi
 notes="Commit: $GITHUB_SHA
 
 Each platform archive contains native GTK and portable web executables.
-Windows bundles GTK. Linux needs system GTK 3; macOS Intel needs Homebrew GTK 3
-in /usr/local. macOS binaries are unsigned, not notarized, and are not .app bundles.
-External authoring tools are not included. Physical burning is Linux-only.
+Windows and macOS include GTK, FFmpeg/FFprobe, VCDImager, dvda-author and mkisofs.
+Windows has a per-user installer; macOS has a relocatable .app and DMG.
+Linux still requires system GTK and external authoring tools.
+Source archives include utility/runtime sources, patches and build records.
+macOS is ad-hoc signed, not Developer ID signed or notarized.
+Physical burning is Linux-only.
 Read README.txt inside the archive before running. Verify downloads with SHA256SUMS.
 "
 if gh release view "$tag" >/dev/null 2>&1; then

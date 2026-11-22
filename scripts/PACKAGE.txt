@@ -1,48 +1,44 @@
-Kapila Burner / DVD-Audio Studio
+Kapila Burner
 https://github.com/radomd92/kapila-burner
 
-Each archive contains BOTH interfaces:
-  kapila-burner[.exe]       Native GTK 3 desktop interface
-  kapila-burner-web[.exe]   Portable loopback web server with embedded browser UI
+Every platform archive contains both interfaces:
+  kapila-burner[.exe]       GTK desktop application
+  kapila-burner-web[.exe]   Local web server with embedded browser interface
 
-Extract the entire archive. From a terminal, change to the extracted directory.
-Run ./kapila-burner -root /path/to/music for the native interface.
-Malagasy is the default; use the selector or -lang en / -lang fr to switch.
-On Windows, use launch-gtk.cmd -root "C:\Music" instead. This launcher
-sets the paths for the bundled GTK runtime, schemas, icons and image loaders.
-The Windows archive is portable as a complete directory, not as a lone GTK EXE.
+Malagasy is the default. Switch with the language selector or -lang en / -lang fr.
 
-Run ./kapila-burner-web -root /path/to/music for the browser interface
-(on Windows: kapila-burner-web.exe -root "C:\Music"). Open the loopback URL
-printed in the terminal, normally http://127.0.0.1:8787. Keep the terminal open.
-The web executable needs neither Go nor GTK installed, on every platform.
+Windows x86-64:
+- Install using kapila-burner-windows-amd64-setup.exe (per-user, no admin needed),
+  or extract the entire ZIP and run kapila-burner.exe / launch-gtk.cmd.
+- GTK, all required DLLs/data, FFmpeg, FFprobe, VCDImager, dvda-author and genuine
+  DVD-Audio mkisofs are included. No MSYS2, Go, or separate utility installs needed.
+- Do not move a single EXE away from its bundled runtime directory.
 
-GTK runtime requirements:
-- Linux x86-64: Ubuntu 22.04 or newer compatible distribution, a graphical
-  desktop, and GTK 3. On Debian/Ubuntu: sudo apt install libgtk-3-0
-  GTK shared libraries are NOT bundled. No development packages are needed.
-- Windows x86-64: GTK DLLs and data are bundled. Keep all extracted files.
-- macOS 15 or newer, Intel: install Homebrew in /usr/local, then brew install gtk+3.
-  GTK dylibs are NOT bundled. This is a native command-line-launched executable,
-  not a self-contained .app. GTK-LINKAGE.txt records the build's library paths.
-  Apple Silicon is not a native target of this archive; no ARM build is claimed.
-  The macOS executables are unsigned and not notarized. Follow your organization's
-  Gatekeeper policy; do not disable system-wide security protections.
+macOS 15 or newer, Intel x86-64:
+- Open the DMG and copy Kapila Burner.app to Applications, or extract the archive.
+- GTK and all five authoring utilities and their non-system libraries are included.
+  No Homebrew, Go, FFmpeg installation or PATH setup is required on the user's Mac.
+- The app is ad-hoc signed, NOT Developer ID signed or notarized. Follow normal
+  Gatekeeper/organization policy; do not disable system-wide security protections.
+- No Apple Silicon native build is claimed.
 
-External authoring tools are NOT bundled on any platform:
-- ffmpeg and ffprobe for media inspection/conversion.
-- vcdimager for VCD BIN/CUE authoring.
-- dvda-author for DVD-Audio; mkisofs with genuine -dvd-audio support for DVD ISOs.
-  Ordinary genisoimage is not an equivalent replacement.
-- Linux only: cdrdao for optional, explicitly confirmed physical VCD burning.
-  Physical burning is unsupported on Windows/macOS. No CI test burns a disc.
-Install platform-compatible tools on PATH; the UI reports missing dependencies.
-Browse/edit projects without authoring tools; authoring needs the tools above.
-No Linux-specific tool payloads or local developer overlays ship in this archive.
-DVD-Audio integration is not run in hosted CI because upstream dvda-author is
-not available in the runner's standard repositories. VCD integration runs on Linux.
+Linux x86-64:
+- GTK 3 and the external authoring programs must still be installed separately.
+  See the repository's dependency instructions. This change bundles Windows/macOS.
 
-The current working directory is used for tool discovery and default output/.
-Use -root and -output to select writable paths. Do not run as administrator/root.
-See the repository README for interface help, formats, and dependency details.
-SHA256SUMS in the release covers all three platform archives.
+Bundled Windows/macOS apps find tools relative to their executable, not the working
+directory. Defaults: user Music library and a writable per-user cache output folder.
+Pass -root /path/to/media and -output /path/to/output to override them.
+
+For the web interface, run kapila-burner-web[.exe] -root /path/to/media, then open
+the loopback URL printed in the terminal, normally http://127.0.0.1:8787.
+Keep the terminal open. Do not expose the service to a network.
+
+Only Linux supports optional, explicitly confirmed physical VCD writing with
+cdrdao. Windows/macOS create complete DVD-Audio ISO and VCD BIN/CUE images;
+write those images using external recording software. No CI job burns a disc.
+
+Corresponding utility/runtime sources and patches are published beside these
+downloads in the matching -sources.tar.gz archive. Keep license notices intact.
+SHA256SUMS covers installers, portable distributions and corresponding sources.
+Read BUILD-UTILITIES.txt and platform runtime manifests for exact build versions.

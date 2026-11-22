@@ -18,7 +18,7 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -37,6 +37,13 @@ jobs:
         with:
           go-version: '1.24.x'
           cache: true
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Select native packaging Python
+        shell: bash
+        run: echo "PYTHON_NATIVE=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -44,7 +51,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev pkg-config build-essential ffmpeg vcdimager cdrdao xvfb xauth
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install gtk+3 pkg-config
+        run: brew install gtk+3 pkg-config bash make autoconf automake libtool libpng zlib libcdio popt flex bison
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -58,11 +65,26 @@ jobs:
             mingw-w64-x86_64-gcc
             make
             zip
+            autoconf
+            automake
+            libtool
+            patch
+            flex
+            bison
+            perl
+            python
+            mingw-w64-x86_64-libpng
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-libcdio
+            mingw-w64-x86_64-popt
       - name: Race tests, vet, and real VCD authoring (no physical burn)
         if: runner.os == 'Linux'
         env:
           VCD_INTEGRATION: '1'
-        run: make test
+        run: |
+          make test
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 -m unittest discover -s scripts/macruntime -p 'test_*.py'
       - name: GTK tests and headless language smoke checks (no physical burn)
         if: runner.os == 'Linux'
         run: |
@@ -86,6 +108,8 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.exe
+            dist/*.dmg
           if-no-files-found: error
           retention-days: 14
 

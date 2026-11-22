@@ -1,0 +1,6 @@
+# name archive sha256 URL license
+ffmpeg ffmpeg-4.2.4.tar.xz 0d5da81feba073ee78e0f18e0966bcaf91464ae75e18e9a0135186249e3d2a0b https://ffmpeg.org/releases/ffmpeg-4.2.4.tar.xz LGPL-2.1-or-later
+ffmpeg-modern ffmpeg-9.0.2.tar.xz 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz LGPL-2.1-or-later
+dvda-author dvda-author-7f405972a2e88acd4fbbfef1d847d3261791686b.tar.gz b2413ad1411b0cb52be4a517b2adaf22f663c249bb17d5891bfd2f7bf03b72f1 https://codeload.github.com/fabnicol/dvda-author/tar.gz/7f405972a2e88acd4fbbfef1d847d3261791686b GPL-3.0-or-later
+vcdimager vcdimager-2.0.1.tar.gz 67515fefb9829d054beae40f3e840309be60cda7d68753cafdd526727758f67a https://ftp.gnu.org/gnu/vcdimager/vcdimager-2.0.1.tar.gz GPL-2.0-or-later
+schilytools schilytools-e835e64f0d84a614b3c8d619ac646060ea6922a5.tar.gz 0fec3b203a7e6485cc05c627f2180c670b54ad4c6fd8e1240d9aa86eb028a00b https://codeload.github.com/clausecker/schilytools/tar.gz/e835e64f0d84a614b3c8d619ac646060ea6922a5 GPL-2.0-and-CDDL-1.0-and-BSD

@@ -12,7 +12,20 @@ only GTK offers an explicitly confirmed physical VCD burn, never automatic burni
 
 ## Download
 
-Latest successful default-branch build (rolling **continuous prerelease**):
+Rolling **continuous prerelease**, updated by successful default-branch builds.
+
+**Bundling transition: verification is pending.** The currently published release
+is the older build with external authoring dependencies. The new installer links
+below are **unavailable until the new bundling CI passes and publishes them**;
+the existing Windows ZIP and macOS tarball retain their filenames and will be
+replaced on publication. The Windows/macOS bundle descriptions below describe
+the new packaging, not a verified or already published release.
+
+Installers (pending publication):
+[Windows setup EXE](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-setup.exe)
+| [macOS Intel DMG](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64.dmg)
+
+Portable alternatives (currently published files are still the older build):
 
 | Platform | Archive |
 | --- | --- |
@@ -24,30 +37,43 @@ Latest successful default-branch build (rolling **continuous prerelease**):
 | [Release page](https://github.com/radomd92/kapila-burner/releases/tag/continuous)
 | [CI workflow and build artifacts](https://github.com/radomd92/kapila-burner/actions/workflows/ci.yml)
 
-The [first hosted CI run](https://github.com/radomd92/kapila-burner/actions/runs/44952181031)
-successfully built all three platform archives and published these downloads.
 Each later successful default-branch run refreshes the release. Pull-request
 builds provide Actions artifacts retained for **14 days**, not public releases.
 Version tags matching `v*` publish separate versioned releases.
 
 Every archive contains both native GTK **`kapila-burner`** and portable web
 **`kapila-burner-web`** executables (`.exe` on Windows). Extract before running.
-The web executable needs no GTK, browser extensions, or frontend build step;
-authoring tools are separate for both interfaces.
+The new macOS tarball also contains **`Kapila Burner.app`** alongside the native/web
+convenience executables. The web interface needs no browser extensions or frontend
+build step. Windows/macOS packages include GTK, all required non-system libraries
+and runtime data, and all five image-authoring tools for both interfaces.
 
 | Platform | Native GTK runtime and limits |
 | --- | --- |
 | Linux | Ubuntu 22.04 or newer, or a compatible distribution with system GTK 3; on Ubuntu install `libgtk-3-0`. A graphical session is required. |
-| Windows | GTK DLLs and runtime data are bundled. Keep the **entire extracted folder** and use `launch-gtk.cmd`, not an isolated `.exe`. |
-| macOS | Intel macOS 15 build; requires Homebrew GTK 3 under `/usr/local` (`brew install gtk+3`). Not self-contained, not an `.app` bundle, **unsigned and not notarized**. |
+| Windows | Install the setup EXE, or keep the **entire extracted ZIP folder** and run `kapila-burner.exe` / `launch-gtk.cmd`, not an isolated `.exe`. GTK DLLs, libraries and runtime data are included. |
+| macOS | Intel macOS 15 or newer. Open the DMG and drag the self-contained **`Kapila Burner.app`** to Applications; the tarball is an alternative. GTK, libraries and runtime data are included; no Homebrew is required. |
 
 No ARM executables are published. Physical VCD burning is **Linux-only** and
-requires `cdrdao` and explicit confirmation. Cross-platform image authoring also
-requires separately installed compatible tools; see [Dependencies](#dependencies).
-FFmpeg, FFprobe, VCDImager, `dvda-author`, genuine `mkisofs`, and `cdrdao` are
-**not bundled**. Availability of these tools on your OS is a separate prerequisite.
+requires optional `cdrdao` and explicit confirmation. Physical burning is
+unsupported on Windows/macOS: use an external burning app for ISO or BIN/CUE
+images. That app is **not required to author images**; burning is never automatic.
+Linux still needs system GTK and separately installed authoring tools; see
+[Dependencies](#dependencies).
 
-To check archive integrity, download `SHA256SUMS` beside the archives and use
+The Windows installer installs per-user into
+`%LOCALAPPDATA%\Programs\KapilaBurner`, needs no administrator privileges, and
+provides shortcuts and an uninstaller. It is **unsigned**; Windows/SmartScreen
+may display an OS warning. No code-signing certificate is claimed. The macOS app
+is **ad-hoc signed, not Developer ID signed and not notarized**. Follow normal
+Gatekeeper and organization policy; do not disable system-wide security protections.
+End users of the new Windows/macOS packages need no Homebrew, MSYS2, Go, Python,
+shell, compiler, separate utility installation, or `PATH` setup. CI build tools
+are not end-user requirements.
+
+On publication, `SHA256SUMS` will cover **seven assets**: three portable archives,
+two installers (EXE/DMG), and two corresponding source archives. To check integrity,
+download `SHA256SUMS` beside the downloads and use
 `sha256sum --check --ignore-missing SHA256SUMS` on Linux, or
 `shasum -a 256 kapila-burner-macos-amd64.tar.gz` on macOS and compare the value.
 On PowerShell use `Get-FileHash .\kapila-burner-windows-amd64.zip -Algorithm SHA256`.
@@ -55,13 +81,18 @@ Checksums detect changed downloads; they are **not cryptographic signatures**.
 
 ## Run
 
-Run either adapter from the application directory, including when using a
-prebuilt executable. Tool discovery uses the **current working directory**,
-not the executable's location; the default output is its `output/` directory.
+The new Windows/macOS bundles find tools relative to the executable and work
+from **any working directory**. The default media root is the user's Music
+folder; output defaults to `Kapila Burner/output` under the user's cache directory.
+Explicit `-root` and `-output` flags override these defaults. Source builds and
+Linux retain their existing working-directory defaults (`..` for media and
+`./output` for output) and local tool discovery.
 
 ### Downloaded Executables
 
-From the extracted application folder on Linux or macOS:
+On Windows, use the installed shortcut. On macOS, open `Kapila Burner.app` from
+Applications. Neither GUI launch requires a terminal. For optional command-line
+use, from an extracted archive on Linux or macOS:
 
 ```sh
 ./kapila-burner -root /path/to/media
@@ -72,7 +103,8 @@ From the extracted application folder on Linux or macOS:
 ./kapila-burner-web -root /path/to/media
 ```
 
-On Windows, run `launch-gtk.cmd` from the extracted folder; pass
+For the Windows portable ZIP, keep the whole folder and run `kapila-burner.exe`
+or `launch-gtk.cmd`; pass
 `-root C:\Music -lang en` as arguments if desired. For the web interface:
 
 ```powershell
@@ -102,7 +134,7 @@ make web
 Open **http://127.0.0.1:8787** in your browser. Keep the terminal running;
 Ctrl-C stops the server and cancels an active job.
 
-Alternatively, use `go run . -root /path/to/media`. Available web
+Alternatively, use `go run . -root /path/to/media`. For source/Linux builds, available web
 flags are `-root` (default `..`), `-output` (default `./output`), and `-listen`
 (default `127.0.0.1:8787`, loopback addresses only). Use the exact URL printed
 by the server rather than substituting a localhost alias.
@@ -121,8 +153,9 @@ release archives use `kapila-burner`. With native GTK 3 available, run a local b
 ./dvd-audio-gtk -root /path/to/media -lang en -project /path/to/project.json
 ```
 
-GTK also accepts `-output` (default `output/` under the current directory).
-Its default library root is the current directory's parent. The native,
+GTK also accepts `-output`. For source/Linux builds it defaults to `output/`
+under the current directory, and the library root defaults to that directory's
+parent; bundled Windows/macOS defaults are described above. The native,
 Nero/K3b-style workspace starts on a welcome screen with **DVD Audio** and
 **Video CD** choices and an option to open an existing JSON project.
 
@@ -233,9 +266,21 @@ to request cancellation; keep the engine alive until the job finishes.
 
 ## Dependencies
 
+**New Windows/macOS bundles (publication and CI verification pending):** all five
+image-authoring executables are bundled, including source-built FFmpeg/FFprobe
+**9.0.2**, VCDImager **2.0.1**, the `dvda-author` core, and genuine DVD-Audio-capable
+`mkisofs`. Pinned versions, source URLs and hashes are recorded in
+[`scripts/utility-sources.tsv`](scripts/utility-sources.tsv), including the pinned
+DVD-Audio and Schilytools commits. GTK and all required non-system libraries/data
+are included too. No system tool installation is needed for image authoring.
+
+**Linux is unchanged:** install system GTK for the native interface and the five
+external authoring tools below for the relevant disc types. `cdrdao` is optional
+and used only for physical VCD burning, not image authoring. Tool roles:
+
 - `ffprobe` inspects source duration and format; `ffmpeg` converts the first
   audio stream to PCM WAV for DVD-Audio or transcodes video/audio for VCD.
-  Both normally come from `PATH`.
+  On Linux/source builds, both normally come from `PATH`.
 - `dvda-author` authors DVD-Audio navigation and audio objects.
 - `mkisofs` packages the disc tree and must support genuine `-dvd-audio`.
   A `genisoimage` substitute without that option is not sufficient. This tool
@@ -244,10 +289,10 @@ to request cancellation; keep the engine alive until the job finishes.
 - `cdrdao` is needed only for Linux GTK physical VCD burning or optional drive simulation,
   not image authoring or web downloads.
 
-Install the tools required for your chosen disc type separately on each machine.
+On Linux/source builds, install the tools required for your chosen disc type separately.
 Check the UI's dependency status; do not run the application with sudo.
 
-The optional development `tools/bin/dvda-author` and `tools/bin/mkisofs` launchers use an
+The optional **local Linux development** `tools/bin/dvda-author` and `tools/bin/mkisofs` launchers use an
 extracted **x86_64/amd64 Ubuntu Impish package**, not a system installation.
 They are platform-specific, not portable binaries for every Linux machine.
 See [tools/README.md](tools/README.md) for the SourceForge provenance link,
@@ -267,13 +312,36 @@ Explicit executable overrides take precedence:
 | `VCDIMAGER` | `vcdimager` |
 | `CDRDAO` | `cdrdao` |
 
-Use absolute executable paths for overrides. Without overrides, only
+Use absolute executable paths for overrides. New Windows/macOS bundles resolve
+their bundled utilities relative to the executable, independent of `PATH` and
+working directory. For Linux/source builds without overrides, only
 `dvda-author` and `mkisofs` try `./tools/bin/` before `PATH`; the other tools
 use `PATH`. `dvda-author-dev` is a final fallback for `dvda-author`.
 Dependency status and resolved paths appear in the UI. Restart the chosen
 adapter after changing tools or overrides.
 The large extracted `tools/opt/` payload is ignored by Git; the launchers
 and tools README remain eligible for version control.
+
+### Corresponding Sources
+
+The new release will provide
+[`kapila-burner-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-windows-amd64-sources.tar.gz)
+and
+[`kapila-burner-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-burner-macos-amd64-sources.tar.gz)
+beside the binaries (also pending publication). **You do not need these archives
+to run the app.** They provide corresponding sources and license notices for
+the bundled components: exact runtime Homebrew formula source archives on macOS,
+all matching MSYS2 package sources on Windows, and pristine utility sources,
+patches, build scripts and licenses. Keep the distributed license notices intact;
+components retain their individual licenses, as recorded in the manifests.
+
+For optional rebuild/reproducibility work, use the source package's
+`BUILD-UTILITIES.txt`, utility source manifest and platform runtime manifests.
+The utility build scripts support rebuilding from the included sources offline;
+this is not a claim that the whole app/runtime build is offline or bit-for-bit
+reproducible. Building requires the documented development tools; running the
+prebuilt app does not. Source collection is designed to fail closed if required
+matching sources cannot be collected, rather than publish incomplete sources.
 
 ## Make A DVD-Audio Disc
 
@@ -407,7 +475,9 @@ per-track estimate.
 
 ## Output And Persistence
 
-Each authoring job gets a dedicated `output/disc-*/` directory. DVD-Audio contains:
+Each authoring job gets a dedicated `disc-*/` directory under the selected output
+root (`output/disc-*/` in source/Linux examples; user cache `Kapila Burner/output`
+by default in the new Windows/macOS bundles). DVD-Audio contains:
 
 ```text
 project.json       project settings, groups, and ordered source paths
@@ -508,7 +578,7 @@ make test-gtk
 make smoke-gtk
 # Real VCD authoring, as enabled in Linux CI (no physical burn):
 VCD_INTEGRATION=1 make test
-# Optional local DVD-Audio + VCD integration, with all tools provisioned:
+# Local DVD-Audio + VCD integration, with all tools provisioned:
 DVDA_INTEGRATION=1 VCD_INTEGRATION=1 go test -race ./...
 ```
 
@@ -542,17 +612,20 @@ The [CI workflow](https://github.com/radomd92/kapila-burner/actions/workflows/ci
 builds native GTK and web archives on Ubuntu 22.04, Windows Server 2022, and
 Intel macOS 15. Linux runs race tests, vet, GTK tests, and the three-language
 widget smoke checks, with `VCD_INTEGRATION=1` for real VCD image authoring.
-Hosted CI does **not** provision the DVD-Audio toolchain or enable
-`DVDA_INTEGRATION`; that remains an optional local/manual check with external
-tools installed. No CI job burns physical media.
+The new bundling CI is intended to source-build the Windows/macOS utilities and
+create real DVD-Audio ISO and VCD BIN/CUE images with a clean `PATH`, including
+checks of a relocated macOS `.app`. Runtime source collection must fail closed
+on missing corresponding sources. **These new checks are currently pending;
+they are not yet evidence of a successful bundled release.** No CI job burns
+physical media or verifies hardware playback.
 
 Use `make web`, `make gtk`, `make test`, `make test-gtk`, and `make smoke-gtk`
 for local development; `make package` builds the release layout on the target
-OS with its GTK development dependencies. The first hosted run successfully
-built and packaged both interfaces on all three operating systems. Linux GTK
-widget checks run under Xvfb; Windows/macOS packaging verifies executable launch
-with `-h`, not graphical interaction or hardware playback. Consult the badge
-and run logs for the latest build status.
+OS with its development dependencies. Linux GTK widget checks run under Xvfb;
+the new Windows/macOS authoring/relocation checks go beyond the old `-h` launch
+checks, but do not establish graphical interaction or hardware playback.
+The older successful CI/release does **not** verify the new dependency bundles.
+Consult the badge, run logs and published asset list for the current status.
 
 For contributions, branch from `main`, make a focused change, run the relevant
 checks, and open a pull request against `main`. Include reproduction steps for

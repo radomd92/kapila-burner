@@ -5,6 +5,7 @@ import (
 	"context"
 	"dvd-audio-studio/internal/core"
 	"dvd-audio-studio/internal/i18n"
+	"dvd-audio-studio/internal/runtimeenv"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -28,23 +29,39 @@ var web embed.FS
 type webAdapter struct{ engine *core.Engine }
 
 func main() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defaultRoot, defaultOutput, err := runtimeenv.DefaultPaths(cwd)
+	if err != nil {
+		log.Fatal(err)
+	}
 	args := os.Args[1:]
 	if len(args) > 0 && args[0] == "web" {
 		args = args[1:]
 	}
 	flags := flag.NewFlagSet("web", flag.ExitOnError)
-	root := flags.String("root", "..", "Audio library root directory")
-	output := flags.String("output", "./output", "Authoring output directory")
+	root := flags.String("root", defaultRoot, "Audio library root directory")
+	output := flags.String("output", defaultOutput, "Authoring output directory")
 	listen := flags.String("listen", "127.0.0.1:8787", "Loopback listen address")
 	_ = flags.Parse(args)
 	host, _, err := net.SplitHostPort(*listen)
 	if err != nil || (host != "localhost" && (net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback())) {
 		log.Fatal("-listen must use a loopback address")
 	}
-	app, err := os.Getwd()
+	app, err := core.ApplicationDir()
 	if err != nil {
 		log.Fatal(err)
 	}
+	if err := runtimeenv.PrepareDefaultLibrary(*root, defaultRoot); err != nil {
+		log.Fatal(err)
+	}
+	cleanup, err := runtimeenv.Configure(false)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cleanup()
 	engine, err := core.New(core.Config{Root: *root, Output: *output, App: app})
 	if err != nil {
 		log.Fatal(err)

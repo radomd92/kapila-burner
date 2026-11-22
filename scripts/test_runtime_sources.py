@@ -1,0 +1,254 @@
+#!/usr/bin/env python3
+"""Offline tests: python3 -m unittest discover -s scripts -p test_runtime_sources.py."""
+
+import hashlib
+import importlib.util
+import io
+import json
+from pathlib import Path
+import tarfile
+import tempfile
+import unittest
+from unittest.mock import patch
+import urllib.error
+import zipfile
+
+
+spec = importlib.util.spec_from_file_location(
+    "runtime_sources", Path(__file__).with_name("collect-runtime-sources.py"))
+sources = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sources)
+
+
+class RuntimeSourcesTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.stage = self.root / "stage"
+        self.stage.mkdir()
+        self.output = self.root / "output"
+        self.output.mkdir()
+        self.scratch = self.root / "scratch"
+        self.scratch.mkdir()
+
+    def mac_stage(self, version="2.0_1"):
+        recipe = self.stage / "THIRD-PARTY-LICENSES/glib" / version / "formula/glib.rb"
+        recipe.parent.mkdir(parents=True)
+        recipe.write_text('class Glib < Formula\n  url "https://example.test/glib.tar.xz"\nend\n')
+        (self.stage / "MACOS-RUNTIME-MANIFEST.json").write_text(json.dumps([
+            {"formula": "glib", "version": version, "install_receipt": {"built_as_bottle": True}}
+        ]))
+
+    def mac_info(self, version="2.0", revision=1):
+        return {"formulae": [{"name": "glib", "full_name": "glib", "revision": revision,
+                              "versions": {"stable": version},
+                              "urls": {"stable": {"url": "https://example.test/glib.tar.xz",
+                                                  "checksum": "upstream-checksum"}},
+                              "resources": [{"name": "patch", "url": "https://example.test/fix.patch"}]}]}
+
+    def windows_stage(self):
+        (self.stage / "WINDOWS-RUNTIME-PACKAGES.txt").write_text(
+            "mingw-w64-x86_64-glib2 2.86.3-1\nmingw-w64-x86_64-gcc 15.2.0-1\n")
+        (self.stage / "WINDOWS-RUNTIME-FILES.tsv").write_text(
+            "SHA256\tPackage\tInstalled version\tMSYS2 source\tStaged path\tOwnership path\n"
+            "abc\tmingw-w64-x86_64-glib2\t2.86.3-1\t/mingw64/bin/glib.dll\tglib.dll\t/a\n"
+            "def\tmingw-w64-x86_64-gcc\t15.2.0-1\t/a\tTHIRD-PARTY-LICENSES/gcc/COPYING\t/a\n")
+
+    def make_source_package(self, version="2.86.3", base="mingw-w64-glib2", omit_source=False):
+        archive = self.root / "package.src.tar.gz"
+        text = (f"pkgbase = {base}\n\tpkgver = {version}\n\tpkgrel = 1\n"
+                "\tsource = https://example.test/glib.tar.xz\n"
+                "\tsource = fix.patch\n\tsha256sums = abc\n")
+        entries = {f"{base}/.SRCINFO": text.encode(), f"{base}/PKGBUILD": b"# exact recipe\n",
+                   f"{base}/fix.patch": b"patch", f"{base}/glib.tar.xz": b"upstream source"}
+        if omit_source:
+            del entries[f"{base}/glib.tar.xz"]
+        with tarfile.open(archive, "w:gz") as target:
+            for name, data in entries.items():
+                item = tarfile.TarInfo(name)
+                item.size = len(data)
+                target.addfile(item, io.BytesIO(data))
+        return archive
+
+    def assert_hashes(self, output):
+        hashed = set()
+        for line in (output / "SHA256SUMS").read_text().splitlines():
+            expected, relative = line.split("  ", 1)
+            path = output / relative
+            self.assertEqual(expected, hashlib.sha256(path.read_bytes()).hexdigest())
+            hashed.add(relative)
+        self.assertEqual(hashed, {p.relative_to(output).as_posix() for p in output.rglob("*")
+                                 if p.is_file() and p.name != "SHA256SUMS"})
+
+    def test_macos_fetches_only_sources_and_preserves_recipe_resources_hashes(self):
+        self.mac_stage()
+        commands = []
+
+        def brew(*args, env=None):
+            commands.append(args)
+            self.assertTrue(Path(env["HOMEBREW_CACHE"]).is_relative_to(self.scratch))
+            if args[1] == "info":
+                return json.dumps(self.mac_info())
+            self.assertEqual(args, ("brew", "fetch", "--build-from-source", "--retry", "glib"))
+            downloads = Path(env["HOMEBREW_CACHE"]) / "downloads"
+            downloads.mkdir()
+            for name, data in (("hash--glib.tar.xz", b"source"), ("hash--fix.patch", b"patch"),
+                               ("hash--source-resource.json", b"source resource"),
+                               ("api.jws.json", b"api"), ("lock.lock", b"lock")):
+                (downloads / name).write_bytes(data)
+            (downloads / "symlink").symlink_to(downloads / "hash--glib.tar.xz")
+            return ""
+
+        with patch.object(sources, "run", side_effect=brew):
+            sources.collect_macos(self.stage, self.output, self.scratch)
+        self.assertEqual(len(commands), 2)
+        result = json.loads((self.output / "SOURCE-MANIFEST.json").read_text())["packages"][0]
+        self.assertEqual(len(result["archives"]), 3)
+        self.assertEqual(result["resources"], self.mac_info()["formulae"][0]["resources"])
+        self.assertTrue((self.output / result["installed_formula_snapshots"][0]).is_file())
+        self.assert_hashes(self.output)
+
+    def test_macos_rejects_source_version_or_revision_mismatch_before_fetch(self):
+        self.mac_stage()
+        for info in (self.mac_info("2.1"), self.mac_info(revision=2)):
+            with self.subTest(info=info), patch.object(sources, "run", return_value=json.dumps(info)) as run:
+                with self.assertRaisesRegex(sources.CollectionError, "version mismatch"):
+                    sources.collect_macos(self.stage, self.output, self.scratch)
+                self.assertEqual(run.call_count, 1)
+
+    def test_macos_normalizes_zero_revision(self):
+        self.assertEqual(sources.normalized_brew_version("1.2_0"), "1.2")
+        self.assertEqual(sources.brew_version(self.mac_info(revision=0)["formulae"][0]), "2.0")
+        self.assertNotEqual(sources.normalized_brew_version("1.2_1"), "1.2")
+
+    def test_macos_requires_installed_recipe(self):
+        self.mac_stage()
+        next(self.stage.rglob("*.rb")).unlink()
+        with patch.object(sources, "run", return_value=json.dumps(self.mac_info())):
+            with self.assertRaisesRegex(sources.CollectionError, "snapshot"):
+                sources.collect_macos(self.stage, self.output, self.scratch)
+
+    def test_macos_empty_cache_and_bottles_fail(self):
+        self.mac_stage()
+        for bottle in (False, True):
+            def brew(*args, env=None):
+                if args[1] == "info":
+                    return json.dumps(self.mac_info())
+                downloads = Path(env["HOMEBREW_CACHE"]) / "downloads"
+                downloads.mkdir(parents=True, exist_ok=True)
+                if bottle:
+                    (downloads / "glib.bottle.tar.gz").write_bytes(b"bottle")
+                return ""
+            with self.subTest(bottle=bottle), patch.object(sources, "run", side_effect=brew):
+                # Each collection uses a fresh private cache.
+                scratch = self.scratch / str(bottle)
+                scratch.mkdir()
+                output = self.output / str(bottle)
+                output.mkdir()
+                with self.assertRaises(sources.CollectionError):
+                    sources.collect_macos(self.stage, output, scratch)
+
+    def test_windows_filters_license_only_owners(self):
+        self.windows_stage()
+        self.assertEqual(sources.windows_packages(self.stage), {"mingw-w64-x86_64-glib2": "2.86.3-1"})
+
+    def test_windows_inventory_version_mismatch_fails(self):
+        self.windows_stage()
+        file = self.stage / "WINDOWS-RUNTIME-FILES.tsv"
+        file.write_text(file.read_text().replace("2.86.3-1", "2.86.2-1"))
+        with self.assertRaisesRegex(sources.CollectionError, "inventory mismatch"):
+            sources.windows_packages(self.stage)
+
+    def test_exact_allsource_package_validation(self):
+        archive = self.make_source_package()
+        fields = sources.validate_source_package(archive, "mingw-w64-glib2", "2.86.3-1",
+                                                self.output / "recipe")
+        self.assertEqual(fields["pkgver"], ["2.86.3"])
+        self.assertTrue((self.output / "recipe/PKGBUILD").is_file())
+
+    def test_source_package_version_and_base_mismatch_fail(self):
+        for base, version in (("mingw-w64-glib2", "2.86.2-1"), ("other", "2.86.3-1")):
+            with self.subTest(base=base, version=version), self.assertRaises(sources.CollectionError):
+                sources.validate_source_package(self.make_source_package(), base, version,
+                                                self.output / "recipe")
+
+    def test_source_package_missing_upstream_source_fails(self):
+        with self.assertRaisesRegex(sources.CollectionError, "missing declared source"):
+            sources.validate_source_package(self.make_source_package(omit_source=True),
+                                            "mingw-w64-glib2", "2.86.3-1", self.output / "recipe")
+
+    def test_windows_downloads_complete_archive_and_preserves_hashes(self):
+        self.windows_stage()
+        archive = self.make_source_package()
+
+        def download(url, target):
+            self.assertEqual(url, "https://repo.msys2.org/mingw/sources/mingw-w64-glib2-2.86.3-1.src.tar.zst")
+            target.write_bytes(archive.read_bytes())
+
+        with patch.object(sources, "installed_pkgbase", return_value="mingw-w64-glib2") as base:
+            with patch.object(sources, "download", side_effect=download):
+                sources.collect_windows(self.stage, self.output, self.scratch)
+        base.assert_called_once_with("mingw-w64-x86_64-glib2", "2.86.3-1")
+        result = json.loads((self.output / "SOURCE-MANIFEST.json").read_text())["packages"][0]
+        self.assertEqual((self.output / result["archive"]).read_bytes(), archive.read_bytes())
+        self.assert_hashes(self.output)
+
+    def test_windows_unavailable_exact_sources_fail_without_recipe_substitution(self):
+        self.windows_stage()
+        error = urllib.error.HTTPError("url", 404, "not found", {}, None)
+        with patch.object(sources, "installed_pkgbase", return_value="mingw-w64-glib2"):
+            with patch.object(sources, "download", side_effect=error) as download:
+                with self.assertRaisesRegex(sources.CollectionError, "release blocked"):
+                    sources.collect_windows(self.stage, self.output, self.scratch)
+                self.assertEqual(download.call_count, 3)
+
+    def test_pacman_pkgbase_is_from_exact_installed_metadata(self):
+        db = self.root / "pacman"
+        desc = db / "local/mingw-w64-x86_64-gcc-libs-15.2.0-1/desc"
+        desc.parent.mkdir(parents=True)
+        desc.write_text("%NAME%\nmingw-w64-x86_64-gcc-libs\n\n%VERSION%\n15.2.0-1\n\n"
+                        "%BASE%\nmingw-w64-gcc\n\n")
+        with patch.object(sources, "run", return_value=str(db)), patch.object(sources.sys, "platform", "linux"):
+            self.assertEqual(sources.installed_pkgbase("mingw-w64-x86_64-gcc-libs", "15.2.0-1"),
+                             "mingw-w64-gcc")
+
+    def test_license_readers_never_extract_archive_paths_or_links(self):
+        archive = self.root / "source.tar"
+        with tarfile.open(archive, "w") as target:
+            for name in ("COPYING", "project/LICENSE", "../../NOTICE", "/COPYRIGHT"):
+                item = tarfile.TarInfo(name)
+                item.size = 4
+                target.addfile(item, io.BytesIO(b"text"))
+            link = tarfile.TarInfo("LICENSE")
+            link.type = tarfile.SYMTYPE
+            link.linkname = "/etc/passwd"
+            target.addfile(link)
+        sources.source_notices(archive, self.output / "notices")
+        self.assertEqual(len(list((self.output / "notices").iterdir())), 2)
+        archive = self.root / "source.zip"
+        with zipfile.ZipFile(archive, "w") as target:
+            target.writestr("project/COPYING", "notice")
+            target.writestr("../LICENSE", "escape")
+        sources.source_notices(archive, self.output / "zip-notices")
+        self.assertEqual(len(list((self.output / "zip-notices").iterdir())), 1)
+
+    def test_failed_collection_does_not_publish_or_touch_utilities(self):
+        self.mac_stage()
+        utility = self.stage / "SOURCE-ARCHIVES/utility.tar.xz"
+        utility.parent.mkdir()
+        utility.write_bytes(b"utility source")
+        with patch.object(sources, "collect_macos", side_effect=sources.CollectionError("fetch failed")):
+            with self.assertRaises(sources.CollectionError):
+                sources.main([str(self.stage)])
+        self.assertEqual(list(utility.parent.iterdir()), [utility])
+        self.assertEqual(utility.read_bytes(), b"utility source")
+
+    def test_linux_without_bundled_runtime_is_noop(self):
+        with patch.object(sources.sys, "platform", "linux"):
+            self.assertEqual(sources.main([str(self.stage)]), 0)
+        self.assertFalse((self.stage / "SOURCE-ARCHIVES").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
