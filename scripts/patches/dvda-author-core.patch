@@ -84,7 +84,43 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
  
 --- a/libutils/src/winport.c
 +++ b/libutils/src/winport.c
-@@ -132,15 +132,7 @@
+@@ -40,6 +40,9 @@
+    http://www.securecoding.cert.org  */
+ 
+ #include <unistd.h>
++#ifdef _WIN32
++#include <io.h>
++#endif
+ 
+ 
+ uint64_t read_file_size(FILE * fp, const char* filename)
+@@ -59,7 +62,25 @@
+ 
+ int truncate_from_end(char* filename, uint64_t offset)
+ {
++#ifdef _WIN32
++    if (offset > INT64_MAX)
++    {
++        errno = EFBIG;
++        return -1;
++    }
++    int fd = _open(filename, _O_WRONLY | _O_BINARY);
++    if (fd == -1) return -1;
++    int result = _chsize_s(fd, (int64_t) offset);
++    int close_result = _close(fd);
++    if (result != 0)
++    {
++        errno = result;
++        return -1;
++    }
++    return close_result;
++#else
+     return truncate(filename, offset);
++#endif
+ }
+ 
+ # ifdef _WIN32
+@@ -132,15 +153,7 @@
     char* commandline = join(name, cli, " ");
     free(cli);
  
@@ -101,7 +137,7 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
  
     bSuccess = CreateProcessA(
        name,
-@@ -177,13 +169,12 @@
+@@ -177,13 +190,12 @@
        HANDLE g_hChildStd_IN_Wr,
        globalData* globals)
  {
@@ -116,6 +152,32 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
      if (globals->debugging)
      {
         if (! bSuccess)  fprintf(stderr, "%s\n", ERR "Error in write process to stdin.");
+@@ -325,16 +337,15 @@
+  }
+ 
+ void close_handles(
+-        int* tube0,
+-        int* tube1,
+-        int* tubeerr0,
+-        int* tubeerr1,
+-        int* GCC_UNUSED parent_stderr)
+-{
+-      close(*tube1);
+-      close(*tube0);
+-      close(*tubeerr1);
+-      close(*tubeerr0);
++        int tube0,
++        int tube1,
++        int tubeerr0,
++        int tubeerr1)
++{
++      close(tube1);
++      close(tube0);
++      close(tubeerr1);
++      close(tubeerr0);
+ }
+ 
+ DWORD write_to_child_stdin(
 --- a/m4/dependencies.m4
 +++ b/m4/dependencies.m4
 @@ -92,7 +92,7 @@
@@ -186,3 +248,159 @@ Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
  
  ]) #DVDA_TEST_SOFTWARE_VERSION
  
+--- a/libutils/src/libc_utils.c
++++ b/libutils/src/libc_utils.c
+@@ -170,7 +170,8 @@
+     if (r)
+         return (cwd);
+     perror("Allocate current path");
+-    clean_exit(-1);
++    free(cwd);
++    exit(EXIT_FAILURE);
+ 
+ #endif
+ return "";
+--- a/src/audio.c
++++ b/src/audio.c
+@@ -1031,7 +1031,11 @@
+         fclose(fp);
+         off_t l = strlen(ret);
+         if (globals->debugging) foutput(INF "%s\n", "Untagging LIST chunks.");
+-        truncate(info->mergeflag ? info->given_channel[u] : info->filename, size - l - 1);
++        if (truncate_from_end(info->mergeflag ? info->given_channel[u] : info->filename, size - l - 1) != 0)
++        {
++            perror("Truncating audio input");
++            clean_exit(EXIT_FAILURE, globals);
++        }
+         if (info->mergeflag)
+             info->channel_fp[u] = fopen(info->given_channel[u], "rb");
+         else
+@@ -1824,35 +1828,6 @@
+ 
+ 
+ 
+-inline static void interleave_sample_extended_merged(int channels, int count, uint8_t *buf, globalData* globals)
+-{
+-    int i, size=channels*4;
+-    uint8_t x;
+-    uint8_t _buf[size];
+-
+-    switch (channels)
+-    {
+-        case 1:
+-        case 2:
+-            for (i = 0; i < count; i += 2)
+-            {
+-                x = buf[i + 1];
+-                buf[i + 1] = buf[i];
+-                buf[i] = x;
+-            }   // check this out
+-            break;
+-
+-        default:
+-
+-            for (i = 0; i < count; i += size)
+-            {
+-              // TODO: fix bug here, S is not the right table, need 1 more dim
+-              permutation_merged(buf, _buf, 0, channels, S, size);
+-                for (int w = 0; w < channels; ++w) buf[w] += i;
+-            }
+-            break;
+-    }
+-}
+ // At the end we have what looks like a simple uint8_t* and we shall used this recast array juste like buf in the simple interleave.
+ 
+ 
+@@ -1878,18 +1853,6 @@
+     }
+ }
+ 
+-inline static void interleave_24_bit_sample_extended_merged(int channels, int count, uint8_t ** buf)
+-{
+-    int i, size=channels*6;
+-    uint8_t _buf[size];
+-
+-    for (i = 0; i < count; i += size)
+-    {
+-        permutation_merged(buf, _buf, 1, channels, S, size);
+-        for (int w = 0; w < channels; ++w) buf[w] += size;
+-
+-    }
+-}
+ 
+ inline static void interleave_24_bit_sample_extended(int channels, int count, uint8_t * buf)
+ {
+@@ -1903,6 +1866,27 @@
+ 
+ // Read numbytes of audio data, and convert it to DVD byte order
+ 
++inline static void interleave_sample_extended_merged(int channels, int count, uint8_t *buf,
++                                                    int sample_bytes, globalData* globals)
++{
++    if (count == 0) return;
++    if (count < 0 || count > AUDIO_BUFFER_SIZE || channels < 1 || channels > 6 ||
++        (sample_bytes != 2 && sample_bytes != 3) || count % (2 * channels * sample_bytes))
++        EXIT_ON_RUNTIME_ERROR_VERBOSE("Invalid merged PCM buffer size");
++
++    int channel_bytes = count / channels;
++    uint8_t interleaved[count];
++    for (int sample = 0; sample < channel_bytes / sample_bytes; ++sample)
++        for (int channel = 0; channel < channels; ++channel)
++            memcpy(interleaved + (sample * channels + channel) * sample_bytes,
++                   buf + channel * channel_bytes + sample * sample_bytes, sample_bytes);
++    memcpy(buf, interleaved, count);
++    if (sample_bytes == 3)
++        interleave_24_bit_sample_extended(channels, count, buf);
++    else
++        interleave_sample_extended(channels, count, buf);
++}
++
+ uint32_t audio_read(fileinfo_t* info, uint8_t* _buf, uint32_t *bytesinbuffer, globalData* globals)
+ {
+     // For merged mono files, the buffers are not succesive chunks but compounded after a bytes pop of each mono
+@@ -2148,7 +2132,7 @@
+ 
+ int audio_close(fileinfo_t* info, globalData* globals)
+ {
+-    if (info->mergeflag) return audio_close_merged(info);
++    if (info->mergeflag) return audio_close_merged(info, globals);
+ 
+     if (globals->debugging) foutput("%s %s\n", INF "Closing audio file", info->filename);
+     if (info->type==AFMT_WAVE)
+@@ -2300,12 +2284,12 @@
+     {
+         case 24:
+             // Processing 24-bit audio
+-            interleave_24_bit_sample_extended_merged(info->channels, buffer_increment, buf);
++            interleave_sample_extended_merged(info->channels, buffer_increment, buf, 3, globals);
+             break;
+ 
+         case 16:
+             // Processing 16-bit audio
+-            interleave_sample_extended_merged(info->channels, buffer_increment, buf, globals);
++            interleave_sample_extended_merged(info->channels, buffer_increment, buf, 2, globals);
+             break;
+ 
+         default:
+--- a/src/include/audio2.h
++++ b/src/include/audio2.h
+@@ -73,6 +73,7 @@
+ uint32_t audio_read(fileinfo_t* info, uint8_t* _buf, uint32_t *bytesinbuffer, globalData* globals);
+ uint32_t audio_read_merged(fileinfo_t* info, uint8_t* _buf, uint32_t *bytesinbuffer, globalData* globals);
+ int audio_close(fileinfo_t* info, globalData* );
++int audio_close_merged(fileinfo_t* info, globalData* globals);
+ int fixwav_repair(fileinfo_t *info, globalData*);
+ int launch_sox(fileinfo_t *info, globalData* globals);
+ command_t *scan_audiofile_characteristics(command_t *command, globalData*);
+--- a/libutils/src/include/winport.h
++++ b/libutils/src/include/winport.h
+@@ -127,6 +127,9 @@
+ #   endif
+ #endif
+ 
++void close_handles(FILE_DESCRIPTOR in_rd, FILE_DESCRIPTOR in_wr,
++                   FILE_DESCRIPTOR err_rd, FILE_DESCRIPTOR err_wr);
++
+  void  pipe_to_child_stdin(const char* name,
+                           char** args,
+                           int GCC_UNUSED  buffer_size,

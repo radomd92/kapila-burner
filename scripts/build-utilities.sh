@@ -241,22 +241,8 @@ avprefix="$dvda/local"
 )
 cp "$work/src/ffmpeg/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg-private-4.2.4.txt"
 (
-    cd "$work/src/ffmpeg-modern"
-    ./configure --prefix="$work/ffmpeg-modern-install" --cc="$compiler" \
-        --disable-autodetect --disable-network --disable-doc --disable-debug \
-        --disable-ffplay --disable-x86asm --disable-inline-asm --disable-alsa \
-        --disable-devices --enable-indev=lavfi --disable-shared --enable-static \
-        --disable-encoders --enable-encoder=pcm_s16le,pcm_s24le,mp2,mpeg1video \
-        --disable-filters \
-        --enable-filter=abuffer,abuffersink,aresample,aformat,anull,anullsrc,buffer,buffersink,null,color,sine,scale,pad,setsar,setdar,format,fps,tpad,apad
-    "$make" -j"$jobs"
-    "$make" install
-)
-cp "$work/ffmpeg-modern-install/bin/ffmpeg$exe" "$work/ffmpeg-modern-install/bin/ffprobe$exe" "$stage/tools/bin/"
-cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg.txt"
-(
     cd "$dvda"
-    # Link only after the internal libraries and private FFmpeg have succeeded.
+    # Check the author before spending time building the modern input utilities.
     export CPPFLAGS="${CPPFLAGS:-} -DHAVE_CONFIG_H"
     export CFLAGS="${CFLAGS:--O2} -std=gnu99"
     liberty=
@@ -272,6 +258,20 @@ cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpe
     cp "src/dvda-author$exe" "$stage/tools/bin/dvda-author$exe"
 )
 cp "$dvda/COPYING" "$stage/tools/share/licenses/dvda-author.txt"
+(
+    cd "$work/src/ffmpeg-modern"
+    ./configure --prefix="$work/ffmpeg-modern-install" --cc="$compiler" \
+        --disable-autodetect --disable-network --disable-doc --disable-debug \
+        --disable-ffplay --disable-x86asm --disable-inline-asm --disable-alsa \
+        --disable-devices --enable-indev=lavfi --disable-shared --enable-static \
+        --disable-encoders --enable-encoder=pcm_s16le,pcm_s24le,mp2,mpeg1video \
+        --disable-filters \
+        --enable-filter=abuffer,abuffersink,aresample,aformat,anull,anullsrc,buffer,buffersink,null,color,sine,scale,pad,setsar,setdar,format,fps,tpad,apad
+    "$make" -j"$jobs"
+    "$make" install
+)
+cp "$work/ffmpeg-modern-install/bin/ffmpeg$exe" "$work/ffmpeg-modern-install/bin/ffprobe$exe" "$stage/tools/bin/"
+cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg.txt"
 (
     cd "$work/src/vcdimager"
     CC="$compiler" CFLAGS="${CFLAGS:--O2} -std=gnu99 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
