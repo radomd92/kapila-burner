@@ -6,7 +6,7 @@ stage=$(cd "$1" && pwd)
 output=$(cd "$2" && pwd)
 app="$stage/kapila-maker.app"
 python3 -B "$scripts/macruntime/make_app.py" "$stage"
-# Check the relocated app, not just the intermediate flat bundle.
+# Check every relocated image, including PlugIns, from the common Contents root.
 python3 -B "$scripts/macruntime/bundle.py" --verify-only "$app/Contents"
 python3 -B "$scripts/smoke-bundle.py" "$app/Contents"
 dmg_stage=$(mktemp -d "${TMPDIR:-/tmp}/kapila-dmg.XXXXXXXX")

@@ -78,12 +78,14 @@ class RuntimeSourcesTests(unittest.TestCase):
             "abc\tmingw-w64-x86_64-glib2\t2.86.3-1\t/mingw64/bin/glib.dll\tglib.dll\t/a\n"
             "def\tmingw-w64-x86_64-gcc\t15.2.0-1\t/a\tTHIRD-PARTY-LICENSES/gcc/COPYING\t/a\n")
 
-    def make_source_package(self, version="2.86.3", base="mingw-w64-glib2", omit_source=False):
+    def make_source_package(self, version="2.86.3", base="mingw-w64-glib2", omit_source=False,
+                            srcinfo=None):
         archive = self.root / "package.src.tar.gz"
         text = (f"pkgbase = {base}\n\tpkgver = {version}\n\tpkgrel = 1\n"
                 "\tsource = https://example.test/glib.tar.xz\n"
                 "\tsource = fix.patch\n\tsha256sums = abc\n")
-        entries = {f"{base}/.SRCINFO": text.encode(), f"{base}/PKGBUILD": b"# exact recipe\n",
+        entries = {f"{base}/.SRCINFO": (text if srcinfo is None else srcinfo).encode(),
+                   f"{base}/PKGBUILD": b"# exact recipe\n",
                    f"{base}/fix.patch": b"patch", f"{base}/glib.tar.xz": b"upstream source"}
         if omit_source:
             del entries[f"{base}/glib.tar.xz"]
@@ -368,6 +370,62 @@ class RuntimeSourcesTests(unittest.TestCase):
                                                 self.output / "recipe", self.tar)
         self.assertEqual(fields["pkgver"], ["2.86.3"])
         self.assertTrue((self.output / "recipe/PKGBUILD").is_file())
+
+    def test_srcinfo_empty_assignments_and_equals_in_values(self):
+        self.assertEqual(sources.srcinfo_fields(
+            "source = \nsource=   \t\npkgdesc = \n"
+            "depends = mingw-w64-ucrt-x86_64-glib2\ndepends = \noptdepends = \n"
+            "source_x86_64 = https://example.test/glib.tar.xz?a=b=c\n"
+            " # source = ignored\nnot an assignment\n"), {
+                "source": ["", ""], "pkgdesc": [""],
+                "depends": ["mingw-w64-ucrt-x86_64-glib2", ""], "optdepends": [""],
+                "source_x86_64": ["https://example.test/glib.tar.xz?a=b=c"]})
+
+    def test_source_package_empty_global_sources_allow_arch_sources(self):
+        text = ("pkgbase = mingw-w64-glib2\npkgver = 2.86.3\npkgrel = 1\n"
+                "source = \nsource=   \npkgdesc = \n"
+                "source_x86_64 = https://example.test/glib.tar.xz?a=b=c\n")
+        archive = self.make_source_package(srcinfo=text)
+        fields = sources.validate_source_package(
+            archive, "mingw-w64-glib2", "2.86.3-1", self.output / "recipe", self.tar)
+        self.assertEqual(fields["source"], ["", ""])
+        self.assertEqual(fields["pkgdesc"], [""])
+        self.assertEqual((self.output / "recipe/.SRCINFO").read_text(), text)
+
+    def test_source_package_empty_sources_and_identity_fail_closed(self):
+        text = ("pkgbase = mingw-w64-glib2\npkgver = 2.86.3\npkgrel = 1\n"
+                "source_x86_64 = glib.tar.xz\n")
+        cases = [(text.replace("source_x86_64 = glib.tar.xz",
+                               "source = \nsource_x86_64=   "), "No sources declared")]
+        for key, value in (("pkgbase", "mingw-w64-glib2"), ("pkgver", "2.86.3"),
+                           ("pkgrel", "1"), ("epoch", "0")):
+            original = text + "epoch = 0\n" if key == "epoch" else text
+            cases.append((original.replace(f"{key} = {value}", f"{key} = "), "version mismatch"))
+        for metadata, error in cases:
+            with self.subTest(metadata=metadata), self.assertRaisesRegex(sources.CollectionError, error):
+                sources.validate_source_package(
+                    self.make_source_package(srcinfo=metadata), "mingw-w64-glib2", "2.86.3-1",
+                    self.output / "recipe", self.tar)
+
+    def test_mocked_srcinfo_empty_source_still_checks_arch_source_presence(self):
+        text = ("pkgbase = mingw-w64-gdk-pixbuf2\npkgver = 2.44.8\npkgrel = 1\n"
+                "source = \npkgdesc=   \nsource_x86_64 = gdk-pixbuf.tar.xz\n")
+        for present in (False, True):
+            members = "mingw-w64-gdk-pixbuf2/.SRCINFO\nmingw-w64-gdk-pixbuf2/PKGBUILD\n"
+            if present:
+                members += "mingw-w64-gdk-pixbuf2/gdk-pixbuf.tar.xz\n"
+            with self.subTest(present=present), patch.object(
+                    sources, "run", side_effect=[members, text, "# recipe\n"]):
+                if present:
+                    fields = sources.validate_source_package(
+                        self.root / "package.src.tar.zst", "mingw-w64-gdk-pixbuf2", "2.44.8-1",
+                        self.output / "recipe", self.tar)
+                    self.assertEqual(fields["source"], [""])
+                else:
+                    with self.assertRaisesRegex(sources.CollectionError, "missing declared source"):
+                        sources.validate_source_package(
+                            self.root / "package.src.tar.zst", "mingw-w64-gdk-pixbuf2", "2.44.8-1",
+                            self.output / "recipe", self.tar)
 
     def test_source_package_version_and_base_mismatch_fail(self):
         for base, version in (("mingw-w64-glib2", "2.86.2-1"), ("other", "2.86.3-1")):

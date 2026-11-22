@@ -60,7 +60,7 @@ func testConfigure(t *testing.T, app bool) {
 	if os.Getenv("PATH") != "original" || os.Getenv("GDK_PIXBUF_MODULE_FILE") != "original" {
 		t.Fatal("nonbundle bootstrap altered environment")
 	}
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "bundle with spaces")
 	resources, libraries, tools := root, filepath.Join(root, "lib"), filepath.Join(root, "tools", "bin")
 	if app {
 		root = filepath.Join(root, "kapila-maker.app", "Contents")
@@ -70,10 +70,27 @@ func testConfigure(t *testing.T, app bool) {
 	schemas := filepath.Join(resources, "share", "glib-2.0", "schemas")
 	gtkPath := filepath.Join(libraries, "gtk-3.0")
 	gioPath := filepath.Join(libraries, "gio", "modules")
+	imPath := filepath.Join(gtkPath, "3.0.0", "immodules")
+	if app {
+		modules = filepath.Join(root, "PlugIns", "pixbuf")
+		gtkPath = filepath.Join(root, "PlugIns", "gtk3")
+		gioPath = filepath.Join(root, "PlugIns", "gio")
+		imPath = filepath.Join(gtkPath, "immodules")
+	}
 	fonts := filepath.Join(resources, "etc", "fonts")
-	for _, path := range []string{modules, schemas, gtkPath, gioPath, fonts, tools} {
+	for _, path := range []string{modules, schemas, imPath, gioPath, fonts, tools, libraries} {
 		if err := os.MkdirAll(path, 0700); err != nil {
 			t.Fatal(err)
+		}
+	}
+	var imModules []string
+	for _, name := range []string{"fake-im-module.so", "fake-im-module.dylib", "ignored.dll", "ignored.cache"} {
+		path := filepath.Join(imPath, name)
+		if err := os.WriteFile(path, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasSuffix(name, ".so") || strings.HasSuffix(name, ".dylib") {
+			imModules = append(imModules, path)
 		}
 	}
 	if err := os.WriteFile(filepath.Join(fonts, "fonts.conf"), []byte("<fontconfig/>"), 0600); err != nil {
@@ -87,7 +104,11 @@ func testConfigure(t *testing.T, app bool) {
 		t.Fatal(err)
 	}
 	imQuery := filepath.Join(tools, "gtk-query-immodules-3.0")
-	if err := os.WriteFile(imQuery, []byte("#!/bin/sh\nprintf '%s\\n' \"$GTK_PATH/fake-im-module.so\"\n"), 0700); err != nil {
+	imScript := "#!/bin/sh\n[ \"$#\" -eq 0 ] || exit 1\nprintf '%s\\n' \"$GTK_PATH/fake-im-module.so\"\n"
+	if app {
+		imScript = "#!/bin/sh\n[ \"$#\" -eq 2 ] || exit 1\nprintf '%s\\n' \"$@\"\n"
+	}
+	if err := os.WriteFile(imQuery, []byte(imScript), 0700); err != nil {
 		t.Fatal(err)
 	}
 	cleanup, err = configure(root, false)
@@ -126,8 +147,21 @@ func testConfigure(t *testing.T, app bool) {
 	}
 	imCache := os.Getenv("GTK_IM_MODULE_FILE")
 	imData, err := os.ReadFile(imCache)
-	if err != nil || string(imData) != filepath.Join(gtkPath, "fake-im-module.so")+"\n" {
+	wantIM := filepath.Join(gtkPath, "fake-im-module.so") + "\n"
+	if app {
+		wantIM = strings.Join(imModules, "\n") + "\n"
+	}
+	if err != nil || string(imData) != wantIM {
 		t.Fatalf("IM cache = %q, %v", imData, err)
+	}
+	if info, err := os.Stat(imCache); err != nil || info.Mode().Perm()&0077 != 0 {
+		t.Fatalf("IM cache is not private: %v", err)
+	}
+	if app {
+		entries, err := os.ReadDir(libraries)
+		if err != nil || len(entries) != 0 {
+			t.Fatalf("Frameworks must not require plugin/version directories: %v, %v", entries, err)
+		}
 	}
 	cleanup()
 	for _, path := range []string{cache, imCache} {
@@ -199,6 +233,59 @@ func TestDefaultPaths(t *testing.T) {
 			}
 		} else if !os.IsNotExist(err) {
 			t.Fatalf("unexpected directory creation: %s (%v)", params.root, err)
+		}
+	}
+}
+
+func TestConfigureHeadlessApp(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "headless.app", "Contents")
+	for _, name := range []string{"MacOS", "Helpers", "Resources"} {
+		if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exe := filepath.Join(root, "MacOS", "kapila-maker")
+	if err := os.WriteFile(exe, nil, 0700); err != nil {
+		t.Fatal(err)
+	}
+	wantRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bundleRoot(exe); got != wantRoot {
+		t.Fatalf("headless bundleRoot = %q, want %q", got, wantRoot)
+	}
+	t.Setenv("PATH", "original")
+	keys := []string{"XDG_DATA_DIRS", "GSETTINGS_SCHEMA_DIR", "GTK_DATA_PREFIX", "GTK_EXE_PREFIX", "GTK_PATH", "GIO_MODULE_DIR", "FONTCONFIG_PATH", "FONTCONFIG_FILE", "GDK_PIXBUF_MODULEDIR", "GDK_PIXBUF_MODULE_FILE", "GTK_IM_MODULE_FILE"}
+	for _, key := range keys {
+		t.Setenv(key, "host-setting")
+	}
+	// Old module directories must not become a fallback inside a proper app.
+	for _, name := range []string{filepath.Join("gdk-pixbuf-2.0", "2.10.0", "loaders"), "gtk-3.0", filepath.Join("gio", "modules")} {
+		if err := os.MkdirAll(filepath.Join(root, "Frameworks", name), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, gtk := range []bool{false, true} {
+		t.Setenv("PATH", "original")
+		cleanup, err := configure(root, gtk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cleanup()
+		if want := strings.Join([]string{root, filepath.Join(root, "Helpers"), "original"}, string(os.PathListSeparator)); os.Getenv("PATH") != want {
+			t.Fatalf("helper PATH = %q, want %q", os.Getenv("PATH"), want)
+		}
+		for _, key := range keys {
+			if gtk && key == "GTK_EXE_PREFIX" {
+				if os.Getenv(key) != root {
+					t.Fatalf("GTK_EXE_PREFIX = %q, want %q", os.Getenv(key), root)
+				}
+				continue
+			}
+			if os.Getenv(key) != "host-setting" {
+				t.Fatalf("headless bootstrap touched %s", key)
+			}
 		}
 	}
 }

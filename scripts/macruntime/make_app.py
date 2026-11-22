@@ -22,7 +22,7 @@ HELPERS = ("ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager",
            "gdk-pixbuf-query-loaders", "gtk-query-immodules-3.0")
 
 
-def destination(relative):
+def destination(relative, *, code=True):
     """Map a flat-stage path to its new path relative to Contents."""
     parts = relative.parts
     if relative.as_posix() in EXECUTABLES:
@@ -30,7 +30,18 @@ def destination(relative):
     if parts[:2] == ("tools", "bin"):
         return Path("Helpers").joinpath(*parts[2:])
     if parts[0] == "lib":
-        return Path("Frameworks").joinpath(*parts[1:])
+        if not code:
+            return Path("Resources") / relative
+        if len(parts) == 1 or (len(parts) == 2 and relative.suffix == ".dylib"):
+            return Path("Frameworks").joinpath(*parts[1:])
+        if parts[1] == "gdk-pixbuf-2.0":
+            # The source root, ABI directory and loaders directory are aliases.
+            return Path("PlugIns/pixbuf").joinpath(*parts[4:])
+        if parts[1] == "gtk-3.0":
+            return Path("PlugIns/gtk3").joinpath(*parts[3:])
+        if parts[1] == "gio" and (len(parts) == 2 or parts[2] == "modules"):
+            return Path("PlugIns/gio").joinpath(*parts[3:])
+        return Path("Resources") / relative
     if parts[0] in ("share", "etc", "tools", "THIRD-PARTY-LICENSES"):
         return Path("Resources") / relative
     if len(parts) == 1 and (relative.suffix.lower() in (".txt", ".json", ".tsv")
@@ -42,7 +53,10 @@ def destination(relative):
 def snapshot(stage, contents):
     """Return the complete move plan and load-command edits, without mutating."""
     paths = sorted(stage.rglob("*"))
+    binaries = images(stage)
+    binary_set = set(binaries)
     plan = {}
+    targets = {}
     for source in paths:
         if source == stage / "launch-gtk.command":
             if source.is_symlink() or not source.is_file():
@@ -50,10 +64,23 @@ def snapshot(stage, contents):
             continue
         if source.is_symlink():
             raise RuntimeError(f"Flat stage must not contain symlinks: {source}")
-        plan[source] = contents / destination(source.relative_to(stage))
+        relative = source.relative_to(stage)
+        target = contents / destination(relative, code=source.is_dir() or source in binary_set)
+        code_location = target.relative_to(contents).parts[0] in (
+            "MacOS", "Helpers", "Frameworks", "PlugIns")
+        if code_location:
+            directories = target if source.is_dir() else target.parent
+            if any("." in part for part in directories.relative_to(contents).parts):
+                raise RuntimeError(f"Dotted directory in code location: {source} -> {target}")
+        # Directory aliases are intentional; files must never overwrite each other.
+        if target in targets and not (source.is_dir() and targets[target].is_dir()):
+            raise RuntimeError(f"Destination collision: {targets[target]} and {source} -> {target}")
+        targets[target] = source
+        plan[source] = target
 
-    binaries = images(stage)
-    binary_set = set(binaries)
+    for source, target in plan.items():
+        if any(parent in targets and not targets[parent].is_dir() for parent in target.parents):
+            raise RuntimeError(f"Destination file used as directory: {source} -> {target}")
     for relative in (*EXECUTABLES, *("tools/bin/" + name for name in HELPERS)):
         if stage / relative not in binary_set:
             raise RuntimeError(f"Required native Mach-O executable missing: {relative}")
@@ -87,9 +114,10 @@ def snapshot(stage, contents):
             changes.extend(("-id", "@rpath/" + target.name))
         edits[target] = changes
 
-    # Executable directories contain code only, not auxiliary tool data.
+    # Code directories contain code only, not auxiliary tool data or caches.
     for source, target in plan.items():
-        if source.is_file() and target.relative_to(contents).parts[0] in ("MacOS", "Helpers"):
+        if source.is_file() and target.relative_to(contents).parts[0] in (
+                "MacOS", "Helpers", "Frameworks", "PlugIns"):
             if source not in binary_set:
                 raise RuntimeError(f"Non-Mach-O file in executable directory: {source}")
     return plan, edits
@@ -109,7 +137,7 @@ def make_app(stage, plist):
         raise RuntimeError("Info.plist must declare the native kapila-maker APPL executable")
     plan, edits = snapshot(stage, contents)
 
-    for directory in ("MacOS", "Helpers", "Frameworks", "Resources"):
+    for directory in ("MacOS", "Helpers", "Frameworks", "PlugIns", "Resources"):
         (contents / directory).mkdir(parents=True, exist_ok=True)
     for source, target in plan.items():
         if source.is_dir():
@@ -132,7 +160,9 @@ def make_app(stage, plist):
         if changes:
             run("install_name_tool", *changes, binary)
     for binary in sorted(edits, key=lambda p: (-len(p.parts), str(p))):
-        run("codesign", "--force", "--sign", "-", binary)
+        # The main executable is sealed by signing its enclosing app, not alone.
+        if binary != contents / "MacOS" / EXECUTABLES[0]:
+            run("codesign", "--force", "--sign", "-", binary)
     run("codesign", "--force", "--sign", "-", app)
     run("codesign", "--verify", "--deep", "--strict", app)
 

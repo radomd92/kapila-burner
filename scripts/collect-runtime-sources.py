@@ -274,9 +274,9 @@ def download(url, target):
 def srcinfo_fields(text):
     fields = {}
     for line in text.splitlines():
-        if " = " in line and not line.lstrip().startswith("#"):
-            key, value = line.strip().split(" = ", 1)
-            fields.setdefault(key, []).append(value)
+        key, separator, value = line.partition("=")
+        if separator and not line.lstrip().startswith("#"):
+            fields.setdefault(key.strip(), []).append(value.strip())
     return fields
 
 
@@ -326,7 +326,7 @@ def validate_source_package(archive, base, version, metadata_dir, tar):
     except (KeyError, IndexError) as error:
         raise CollectionError(f"Incomplete .SRCINFO in {archive.name}") from error
     sources = [value for key, values in fields.items()
-               if key == "source" or key.startswith("source_") for value in values]
+               if key == "source" or key.startswith("source_") for value in values if value]
     if not sources:
         raise CollectionError(f"No sources declared in {archive.name}")
     for source in sources:

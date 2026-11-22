@@ -74,7 +74,7 @@ func ResourceDir(root string) string {
 	return root
 }
 
-// LibraryDir contains shared libraries and GTK modules.
+// LibraryDir contains shared libraries (and GTK modules in flat bundles).
 func LibraryDir(root string) string {
 	if appLayout(root) {
 		return filepath.Join(root, "Frameworks")
@@ -177,13 +177,32 @@ func configure(root string, gtk bool) (func(), error) {
 		return cleanup, nil
 	}
 	resources, libraries := ResourceDir(root), LibraryDir(root)
+	app := appLayout(root)
+	gtkPath := filepath.Join(libraries, "gtk-3.0")
+	gioPath := filepath.Join(libraries, "gio", "modules")
+	var modules []string
+	if app {
+		gtkPath = filepath.Join(root, "PlugIns", "gtk3")
+		gioPath = filepath.Join(root, "PlugIns", "gio")
+		path := filepath.Join(root, "PlugIns", "pixbuf")
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			modules = []string{path}
+		}
+	} else {
+		// Flat bundles retain GTK's versioned on-disk ABI paths.
+		var err error
+		modules, err = filepath.Glob(filepath.Join(libraries, "gdk-pixbuf-2.0", "*", "loaders"))
+		if err != nil {
+			return cleanup, err
+		}
+	}
 	for _, item := range []struct{ key, path, value string }{
 		{"XDG_DATA_DIRS", filepath.Join(resources, "share"), ""},
 		{"GSETTINGS_SCHEMA_DIR", filepath.Join(resources, "share", "glib-2.0", "schemas"), ""},
 		{"GTK_DATA_PREFIX", filepath.Join(resources, "share"), resources},
 		{"GTK_EXE_PREFIX", libraries, root},
-		{"GTK_PATH", filepath.Join(libraries, "gtk-3.0"), ""},
-		{"GIO_MODULE_DIR", filepath.Join(libraries, "gio", "modules"), ""},
+		{"GTK_PATH", gtkPath, ""},
+		{"GIO_MODULE_DIR", gioPath, ""},
 		{"FONTCONFIG_PATH", filepath.Join(resources, "etc", "fonts"), ""},
 		{"FONTCONFIG_FILE", filepath.Join(resources, "etc", "fonts", "fonts.conf"), ""},
 	} {
@@ -200,11 +219,6 @@ func configure(root string, gtk bool) (func(), error) {
 				return cleanup, err
 			}
 		}
-	}
-	// The versioned gdk-pixbuf directory is part of GTK's on-disk ABI.
-	modules, err := filepath.Glob(filepath.Join(libraries, "gdk-pixbuf-2.0", "*", "loaders"))
-	if err != nil {
-		return cleanup, err
 	}
 	for _, item := range []struct{ helper, key string }{
 		{"gdk-pixbuf-query-loaders", "GDK_PIXBUF_MODULE_FILE"},
@@ -229,8 +243,23 @@ func configure(root string, gtk bool) (func(), error) {
 		if _, err := os.Stat(query); os.IsNotExist(err) && item.key == "GTK_IM_MODULE_FILE" {
 			continue
 		}
+		var args []string
+		if app && item.key == "GTK_IM_MODULE_FILE" {
+			// The helper's compiled-in versioned paths do not apply to signed apps.
+			for _, extension := range []string{"*.so", "*.dylib"} {
+				matches, err := filepath.Glob(filepath.Join(gtkPath, "immodules", extension))
+				if err != nil {
+					cleanup()
+					return cleanup, err
+				}
+				args = append(args, matches...)
+			}
+			if len(args) == 0 {
+				continue
+			}
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		cmd := exec.CommandContext(ctx, query)
+		cmd := exec.CommandContext(ctx, query, args...)
 		cmd.WaitDelay = time.Second
 		data, err := cmd.Output()
 		cancel()
