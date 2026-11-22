@@ -1,5 +1,6 @@
 Core-build and native-header fixes; retain bundle path options in core mode.
 Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
+Use Win32 byte-stream handles directly, without CRT FILE text-mode operations.
 --- a/configure.ac
 +++ b/configure.ac
 @@ -50,7 +50,6 @@
@@ -81,3 +82,37 @@ Fix an incorrectly sized snprintf and a truncated path length in launch_manager.
      if (globals->videozone && !globals->nooutput) secure_mkdir(videotsdir, globals->access_rights, globals);
          errno=0;
  
+--- a/libutils/src/winport.c
++++ b/libutils/src/winport.c
+@@ -132,15 +132,7 @@
+    char* commandline = join(name, cli, " ");
+    free(cli);
+ 
+-   int result = _setmode( _fileno( g_hChildStd_IN_Wr ), _O_BINARY );
+-   if  ( result == -1 )
+-        {
+-           perror( ERR "Cannot set mode" );
+-           clean_exit(EXIT_FAILURE, globals);
+-        }
+-     else
+-     if ( globals->veryverbose)
+-          foutput("%s", MSG_TAG "'stdout successfully changed to binary mode\n" );
++   /* CreatePipe/WriteFile use native byte streams, not CRT text-mode FILEs. */
+ 
+    bSuccess = CreateProcessA(
+       name,
+@@ -177,13 +169,12 @@
+       HANDLE g_hChildStd_IN_Wr,
+       globalData* globals)
+ {
+-    DWORD dwWritten;
++    DWORD dwWritten = 0;
+ 
+     BOOL bSuccess = FALSE;
+ 
+ 
+     bSuccess = WriteFile(g_hChildStd_IN_Wr, chBuf, dwBytesToBeWritten, &dwWritten, NULL);
+-    fflush(stdin);
+     if (globals->debugging)
+     {
+        if (! bSuccess)  fprintf(stderr, "%s\n", ERR "Error in write process to stdin.");

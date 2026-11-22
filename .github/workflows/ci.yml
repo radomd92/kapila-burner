@@ -31,7 +31,6 @@ jobs:
             runner: macos-15-intel
     env:
       CGO_CFLAGS: -O0 -g0 -Wno-deprecated-declarations
-      UTILITY_BUILD_ROOT: ${{ runner.temp }}/kapila-utilities
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -44,7 +43,9 @@ jobs:
           python-version: '3.12'
       - name: Select native packaging Python
         shell: bash
-        run: echo "PYTHON_NATIVE=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+        run: |
+          echo "PYTHON_NATIVE=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+          echo "UTILITY_BUILD_ROOT=$RUNNER_TEMP/kapila-utilities" >> "$GITHUB_ENV"
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |

@@ -217,6 +217,14 @@ avprefix="$dvda/local"
     for file in "${generated[@]}"; do
         [[ -s $file ]] || { printf 'dvda-author configure did not generate %s\n' "$file" >&2; exit 1; }
     done
+    # These libraries need config.h, not FFmpeg; expose porting errors early.
+    export CPPFLAGS="${CPPFLAGS:-} -DHAVE_CONFIG_H"
+    export CFLAGS="${CFLAGS:--O2} -std=gnu99"
+    "$make" -B -C libutils/src CC="$compiler"
+    "$make" -B -C libfixwav/src CC="$compiler"
+    if [[ $platform == WindowsMINGW64 ]]; then
+        "$make" -B -C libiberty/src CC="$compiler"
+    fi
 )
 (
     cd "$work/src/ffmpeg"
@@ -248,16 +256,12 @@ cp "$work/ffmpeg-modern-install/bin/ffmpeg$exe" "$work/ffmpeg-modern-install/bin
 cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpeg.txt"
 (
     cd "$dvda"
-    # Build in dependency order. Upstream's parallel all target races on .a files
-    # and .ONESHELL can hide a failed recursive make or link behind a final echo.
+    # Link only after the internal libraries and private FFmpeg have succeeded.
     export CPPFLAGS="${CPPFLAGS:-} -DHAVE_CONFIG_H"
     export CFLAGS="${CFLAGS:--O2} -std=gnu99"
-    "$make" -B -C libutils/src CC="$compiler"
-    "$make" -B -C libfixwav/src CC="$compiler"
     liberty=
     winlibs=
     if [[ $platform == WindowsMINGW64 ]]; then
-        "$make" -B -C libiberty/src CC="$compiler"
         liberty="$dvda/libiberty/src/libiberty.a"
         winlibs='-lwinmm -lbcrypt'
     fi
