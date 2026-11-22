@@ -323,6 +323,9 @@ func discoverTools(app string) []Tool {
 func discoverToolsFor(app, bundle, goos string) []Tool {
 	var tools []Tool
 	for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager", "cdrdao"} {
+		if name == "cdrdao" && goos != "linux" {
+			continue
+		}
 		path := os.Getenv(map[string]string{"ffmpeg": "FFMPEG", "ffprobe": "FFPROBE", "dvda-author": "DVDA_AUTHOR", "mkisofs": "MKISOFS", "vcdimager": "VCDIMAGER", "cdrdao": "CDRDAO"}[name])
 		toolRoot := ""
 		if goos == "windows" || goos == "darwin" {

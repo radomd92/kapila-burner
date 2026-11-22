@@ -1,0 +1,269 @@
+Native MinGW-w64 x86-64 rules and modern GCC compatibility.
+Keep Win32 DWORD ABI types and reject unavailable POSIX operations with ENOSYS.
+--- /dev/null
++++ b/RULES/x86_64-mingw32_nt-gcc.rul
+@@ -0,0 +1,3 @@
++# Native x86-64 MinGW uses the same Windows ABI rules; gcc selects 64-bit code.
++include $(SRCROOT)/$(RULESDIR)/i686-mingw32_nt-gcc.rul
++CPPOPTS= -I$(ARCHDIR) -I$(OINCSDIR) $(INCDIRS:%=-I%) $(INCDIRSX:%=-I%)
+--- a/libfind/walk.c
++++ b/libfind/walk.c
+@@ -155,7 +155,7 @@
+ 						struct WALK *_state));
+ LOCAL	int	xchdir		__PR((char *p));
+ 
+-LOCAL	int	wstat		__PR((const char *nm, struct stat *sp,
++LOCAL	int	walk_stat	__PR((const char *nm, struct stat *sp,
+ 					struct pdirs *pd));
+ LOCAL	int	wlstat		__PR((const char *nm, struct stat *sp,
+ 					struct pdirs *pd));
+@@ -177,7 +177,7 @@
+ 	struct WALK	*state; /* Walk state				*/
+ {
+ 	struct twvars	vars;
+-	statfun		statf = wstat;
++	statfun		statf = walk_stat;
+ 	size_t		nlen;
+ 	int		ret;
+ 
+@@ -252,7 +252,7 @@
+ 			statf = wlstat;
+ 
+ 		if (state->walkflags & (WALK_ARGFOLLOW|WALK_ALLFOLLOW))
+-			statf = wstat;
++			statf = walk_stat;
+ 	}
+ 
+ 	ret = walk(nm, statf, fn, state, (struct pdirs *)0);
+@@ -971,7 +971,7 @@
+  * Use vanilla stat()
+  */
+ LOCAL int
+-wstat(nm, sp, pd)
++walk_stat(nm, sp, pd)
+ 	const char	*nm;
+ 	struct stat	*sp;
+ 	struct pdirs	*pd;
+--- a/libfind/find.c
++++ b/libfind/find.c
+@@ -1507,7 +1507,12 @@
+ 		 * For file names from the command line, we did not perform
+ 		 * a chdir() before, so we need to use the full path name.
+ 		 */
++#ifdef HAVE_READLINK
+ 		lsize = readlink(state->level ? ff : f, lname, sizeof (lname));
++#else
++		seterrno(ENOSYS);
++		lsize = -1;
++#endif
+ 		if (lsize < 0) {
+ 			ferrmsg(state->std[2],
+ 				_("Cannot read link '%s'.\n"), ff);
+@@ -1563,7 +1568,12 @@
+ 		 * For file names from the command line, we did not perform
+ 		 * a chdir() before, so we need to use the full path name.
+ 		 */
++#ifdef HAVE_READLINK
+ 		lsize = readlink(state->level ? ff : f, lname, sizeof (lname));
++#else
++		seterrno(ENOSYS);
++		lsize = -1;
++#endif
+ 		if (lsize < 0) {
+ 			ferrmsg(state->std[2],
+ 				_("Cannot read link '%s'.\n"), ff);
+--- a/libschily/gethostname.c
++++ b/libschily/gethostname.c
+@@ -74,7 +74,7 @@
+ 	char	*name;
+ 	int	namelen;
+ {
+-	UInt32_t	len = namelen;
++	DWORD		len = namelen;
+ 	char		nbuf[MAX_COMPUTERNAME_LENGTH+1];
+ 
+ 	if (namelen < 0) {
+--- a/libschily/kill.c
++++ b/libschily/kill.c
+@@ -45,8 +45,8 @@
+ have_pid(pid)
+ 	pid_t	pid;
+ {
+-	UInt32_t	procs[MAX_PIDS];
+-	UInt32_t	nents;
++	DWORD		procs[MAX_PIDS];
++	DWORD		nents;
+ 	int		i;
+ 
+ 	if (pid == 0)
+@@ -56,7 +56,7 @@
+ 		seterrno(ESRCH);
+ 		return (-1);
+ 	}
+-	nents /= sizeof (UInt32_t);
++	nents /= sizeof (DWORD);
+ 
+ 	for (i = 0; i < nents; i++) {
+ 		if (pid == procs[i])
+--- a/libschily/uname.c
++++ b/libschily/uname.c
+@@ -34,6 +34,7 @@
+ #define	gethostname	__winsock_gethostname
+ #include <schily/windows.h>
+ #undef	gethostname
++#include <schily/hostname.h>
+ 
+ /*
+  * cystyle believes BOOL is a function name and does not like:
+--- a/include/schily/hostname.h
++++ b/include/schily/hostname.h
+@@ -77,14 +77,12 @@
+  * (winsock*.h instead of unistd.h) and they are in conflict with the standard.
+  * Because the prototype is in the wrong file and the function is not in libc,
+  * configure will believe gethostname() is missing.
+- * We cannot define our own correct prototype, but this is not a problem as the
+- * return type is int.
++ * libschily supplies its own implementation when libc lacks this function.
++ * Windows declarations are renamed around windows.h where necessary.
+  */
+-#if !defined(__MINGW32__)
+ #ifndef	HAVE_GETHOSTNAME
+ extern	int		gethostname	__PR((char *name, int namelen));
+ #endif
+-#endif
+ #ifndef	HAVE_GETDOMAINNAME
+ extern	int		getdomainname	__PR((char *name, int namelen));
+ #endif
+--- a/include/schily/libport.h
++++ b/include/schily/libport.h
+@@ -342,6 +342,9 @@
+ extern	int		fchownat __PR((int fd, const char *name,
+ 					uid_t owner, gid_t group, int flag));
+ #endif
++#ifndef HAVE_CHOWN
++extern int chown __PR((const char *name, uid_t owner, gid_t group));
++#endif
+ 
+ #ifndef	HAVE_FDOPENDIR
+ #ifdef _SCHILY_DIRENT_H
+--- a/libschily/futimesat.c
++++ b/libschily/futimesat.c
+@@ -45,7 +45,11 @@
+ #define	KR_DECL		const struct timeval times[2];
+ /* CSTYLED */
+ #define	KR_ARGS		, times
++#ifdef HAVE_UTIMES
+ #define	FUNC_CALL(n)	utimes(n, times)
++#else
++#define FUNC_CALL(n) (seterrno(ENOSYS), -1)
++#endif
+ #define	FLAG_CHECK()
+ #define	FUNC_NAME	futimesat
+ #define	FUNC_RESULT	int
+--- a/libschily/linkat.c
++++ b/libschily/linkat.c
+@@ -67,14 +67,23 @@
+ 	} else {
+ 		buf[blen] = '\0'; /* Solaris syscall does not null-terminate */
+ 	}
++#ifdef HAVE_LINK
+ 	return (link(buf, new));
++#else
++	seterrno(ENOSYS);
++	return (-1);
++#endif
+ }
+ 
+ #define	KR_DECL		int flag;
+ /* CSTYLED */
+ #define	KR_ARGS		, flag
++#ifdef HAVE_LINK
+ #define	FUNC_CALL(n1, n2)	(flag & AT_SYMLINK_FOLLOW ? \
+ 					linkfollow(n1, n2) : link(n1, n2))
++#else
++#define FUNC_CALL(n1, n2) (seterrno(ENOSYS), -1)
++#endif
+ #define	FLAG_CHECK()	if (flag & ~(AT_SYMLINK_FOLLOW)) { \
+ 				seterrno(EINVAL);			 \
+ 				return (-1);				 \
+--- a/libschily/resolvepath.c
++++ b/libschily/resolvepath.c
+@@ -221,7 +221,12 @@
+ 			char	c = *b;
+ 			int	depth = (flags >> 8) + 1;
+ 
++#ifdef HAVE_READLINK
+ 			len = readlink(buf, lname, sizeof (lname));
++#else
++			seterrno(ENOSYS);
++			return (-1);
++#endif
+ 			if (len < 0) {
+ 				return (-1);
+ 			}
+--- a/libschily/spawn.c
++++ b/libschily/spawn.c
+@@ -186,6 +186,10 @@
+ 	int		argc;
+ 	char		* const argv[];
+ {
++#if !defined(HAVE_FORK) && !defined(HAVE_VFORK)
++	seterrno(ENOSYS);
++	return (-1);
++#else
+ 	int	pid = -1;	/* Initialization needed to make GCC happy */
+ 	volatile int	i;
+ 
+@@ -206,12 +210,17 @@
+ #ifndef	lint
+ 	return (0);		/* keep gnu compiler happy */
+ #endif
++#endif
+ }
+ 
+ EXPORT int
+ wait_chld(pid)
+ 	int	pid;
+ {
++#ifndef HAVE_WAIT
++	seterrno(ENOSYS);
++	return (-1);
++#else
+ 	int	died;
+ 	WAIT_T	status;
+ 
+@@ -229,5 +238,6 @@
+ 	if (WIFEXITED(status))
+ 		return (WEXITSTATUS(status));
+ 	return (-WTERMSIG(status));
++#endif
+ }
+ #endif	/* __DO__FSPAWNL__ */
+--- a/libschily/waitid.c
++++ b/libschily/waitid.c
+@@ -20,6 +20,7 @@
+ 
+ #include	<schily/wait.h>
+ #include	<schily/schily.h>
++#include <schily/errno.h>
+ 
+ #ifndef	HAVE_WAITID
+ EXPORT int
+@@ -29,6 +30,10 @@
+ 	siginfo_t	*infop;		/* Must be != NULL */
+ 	int		opts;
+ {
++#ifndef HAVE_WAITPID
++	seterrno(ENOSYS);
++	return (-1);
++#else
+ 	int		exstat;
+ 	pid_t		pid;
+ #ifdef	__needed__
+@@ -108,5 +113,6 @@
+ 	}
+ 
+ 	return (0);
++#endif
+ }
+ #endif

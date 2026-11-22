@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -77,6 +78,9 @@ func TestHTTPContractAndLanguage(t *testing.T) {
 		t.Fatalf("status schema: %s, %v", w.Body.String(), err)
 	}
 	for _, name := range []string{"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager", "cdrdao"} {
+		if name == "cdrdao" && runtime.GOOS != "linux" {
+			continue
+		}
 		found := false
 		for _, tool := range status.Tools {
 			found = found || tool.Name == name

@@ -55,7 +55,11 @@ func TestBundledDiscovery(t *testing.T) {
 			check := func(wantRoot string) {
 				t.Helper()
 				t.Setenv("EXPECTED_BUNDLE", wantRoot)
-				for _, tool := range discoverToolsFor(app, bundle, goos) {
+				tools := discoverToolsFor(app, bundle, goos)
+				if len(tools) != 5 {
+					t.Fatalf("non-Linux bundles must list exactly five required authoring tools: %+v", tools)
+				}
+				for _, tool := range tools {
 					if tool.Name == "cdrdao" {
 						continue
 					}

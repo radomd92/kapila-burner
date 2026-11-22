@@ -75,7 +75,7 @@ recipe=$({
         "PKG_CONFIG_LIBDIR=${PKG_CONFIG_LIBDIR:-}" "SDKROOT=${SDKROOT:-}" \
         "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-}"
     # Hash content and relative names, not checkout locations or file timestamps.
-    for input in utility-sources.tsv build-utilities.sh patches/dvda-author-core.patch; do
+    for input in utility-sources.tsv build-utilities.sh patches/dvda-author-core.patch patches/schilytools-mingw64.patch; do
         input_hash=$(sha256 "$scripts/$input") || exit 1
         printf '%s\n%s\n' "$input" "${input_hash%% *}"
     done
@@ -227,6 +227,29 @@ avprefix="$dvda/local"
     fi
 )
 (
+    cd "$work/src/schilytools"
+    if [[ ! -f .utility-patched ]]; then
+        "$patchcmd" --batch --fuzz=0 -p1 < "$scripts/patches/schilytools-mingw64.patch"
+        touch .utility-patched
+    fi
+    schily_args=(CCOM="$compiler" COPTX=-std=gnu99 GMAKE_NOWARN=true)
+    if [[ $platform == WindowsMINGW64 ]]; then
+        # This is Schily's native MinGW rule family, not Cygwin/MSYS libc.
+        schily_args+=(OSNAME=mingw32_nt ARCH=x86_64 K_ARCH=x86_64 "CONFFLAGS=--host=$triplet")
+    fi
+    # Check the native image builder before the longer FFmpeg builds.
+    "$make" -C inc "${schily_args[@]}"
+    for dir in libschily libdeflt libmdigest libfind libfile libhfs_iso libsiconv libcdrdeflt libscg librscg libscgcmd; do
+        "$make" -C "$dir" -j"$jobs" "${schily_args[@]}"
+    done
+    "$make" -C mkisofs -j"$jobs" "${schily_args[@]}"
+    binaries=(mkisofs/OBJ/*/mkisofs"$exe")
+    [[ ${#binaries[@]} == 1 && -f ${binaries[0]} ]]
+    cp "${binaries[0]}" "$stage/tools/bin/"
+)
+cp "$work/src/schilytools/mkisofs/COPYING" "$stage/tools/share/licenses/mkisofs.txt"
+cp "$work/src/schilytools/CDDL.Schily.txt" "$stage/tools/share/licenses/Schily-CDDL.txt"
+(
     cd "$work/src/ffmpeg"
     ./configure --prefix="$avprefix" --cc="$compiler" \
         --disable-autodetect --disable-network --disable-doc --disable-debug \
@@ -282,21 +305,6 @@ cp "$work/src/ffmpeg-modern/COPYING.LGPLv2.1" "$stage/tools/share/licenses/FFmpe
     cp "frontends/cli/vcdimager$exe" "$stage/tools/bin/"
 )
 cp "$work/src/vcdimager/COPYING" "$stage/tools/share/licenses/VCDImager.txt"
-(
-    cd "$work/src/schilytools"
-    # Only mkisofs and its internal static libraries, not recording utilities.
-    # Configuration must finish before the library sub-builds start.
-    "$make" -C inc CCOM="$compiler" COPTX=-std=gnu99 GMAKE_NOWARN=true
-    for dir in libschily libdeflt libmdigest libfind libfile libhfs_iso libsiconv libcdrdeflt libscg librscg libscgcmd; do
-        "$make" -C "$dir" -j"$jobs" CCOM="$compiler" COPTX=-std=gnu99 GMAKE_NOWARN=true
-    done
-    "$make" -C mkisofs -j"$jobs" CCOM="$compiler" COPTX=-std=gnu99 GMAKE_NOWARN=true
-    binaries=(mkisofs/OBJ/*/mkisofs"$exe")
-    [[ ${#binaries[@]} == 1 && -f ${binaries[0]} ]]
-    cp "${binaries[0]}" "$stage/tools/bin/"
-)
-cp "$work/src/schilytools/mkisofs/COPYING" "$stage/tools/share/licenses/mkisofs.txt"
-cp "$work/src/schilytools/CDDL.Schily.txt" "$stage/tools/share/licenses/Schily-CDDL.txt"
 bin="$stage/tools/bin"
 smoke=$(mktemp -d "$work/smoke.XXXXXX")
 mkdir -p "$smoke/audio" "$smoke/lplex" "$smoke/lplex-output"
@@ -367,6 +375,7 @@ done
     printf 'Private FFmpeg: only file/WAV, PCM16/24/32 and MLP decoders, MLP encoder/muxer/parser, and audio conversion filters.\n'
     printf 'Public FFmpeg: all built-in input decoders/demuxers and muxers; output encoders limited to PCM16/24, MP2 and MPEG-1 video.\n'
     printf 'Public filters: buffer/sink, aresample/aformat/anull/anullsrc, color/sine, scale/pad/setsar/setdar/format/fps/tpad/apad.\n'
+    printf 'Windows mkisofs uses native x86-64 MinGW rules (OSNAME=mingw32_nt), not Cygwin/MSYS libc.\n'
     printf 'Legacy FFmpeg executables are neither built nor shipped; public ffmpeg/ffprobe use 9.0.2.\n'
     printf 'Use -W and existing --bindir, --datadir, --workdir, -D, --lplex-tempdir, --lplex-output paths.\n'
     printf 'Core author accepts PCM WAV; application FFmpeg handles other inputs.\n'
