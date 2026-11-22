@@ -420,6 +420,37 @@ func TestEstimateWAVLimitAndCapacity(t *testing.T) {
 	}
 }
 
+func TestScanFolderScopesMediaToSelectedDirectory(t *testing.T) {
+	s := testStudio(t)
+	for _, name := range []string{"outside.wav", "selected/nested/track.wav", "selected/.hidden/skip.wav"} {
+		path := filepath.Join(s.root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		cacheTrack(t, s, name, 1)
+	}
+	ctx := context.Background()
+	for _, folder := range []string{filepath.Join("selected", "nested"), filepath.Join(s.root, "selected")} {
+		files, err := s.ScanFolder(ctx, folder)
+		if err != nil || len(files) != 1 || files[0].Path != "selected/nested/track.wav" || files[0].Error != "" {
+			t.Fatalf("ScanFolder(%q) = %+v, %v", folder, files, err)
+		}
+	}
+	for _, folder := range []string{"..", "outside.wav", "missing", filepath.Join("selected", ".hidden"), s.output, s.app} {
+		if _, err := s.ScanFolder(ctx, folder); err == nil {
+			t.Errorf("ScanFolder(%q) unexpectedly succeeded", folder)
+		}
+	}
+	link := filepath.Join(s.root, "linked")
+	if err := os.Symlink(filepath.Dir(s.root), link); err == nil {
+		if _, err := s.ScanFolder(ctx, filepath.Join(link, filepath.Base(s.root))); err == nil {
+			t.Error("ScanFolder followed a symlinked ancestor")
+		}
+	} else if runtime.GOOS != "windows" {
+		t.Fatal(err)
+	}
+}
+
 func TestSourceRestrictions(t *testing.T) {
 	s := testStudio(t)
 	cacheTrack(t, s, "a.wav", 1)

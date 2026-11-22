@@ -11,6 +11,7 @@ assets=(
   kapila-maker-macos-amd64.tar.gz
   kapila-maker-windows-amd64-setup.exe
   kapila-maker-macos-amd64.dmg
+  kapila-maker-linux-amd64-sources.tar.gz
   kapila-maker-windows-amd64-sources.tar.gz
   kapila-maker-macos-amd64-sources.tar.gz
 )
@@ -38,11 +39,11 @@ else
 fi
 notes="Commit: $GITHUB_SHA
 
-Each platform archive contains native GTK and portable web executables.
-Windows and macOS include GTK, FFmpeg/FFprobe, VCDImager, dvda-author and mkisofs.
+Each platform archive contains desktop and web executables, plus FFmpeg/FFprobe,
+VCDImager, dvda-author and mkisofs.
 Windows has a per-user installer; macOS has a relocatable .app and DMG.
-Linux still requires system GTK and external authoring tools.
-Source archives include utility/runtime sources, patches and build records.
+Windows and macOS bundle GTK. Linux uses system GTK and utility shared libraries.
+Source archives include bundled utility/runtime sources, patches and build records.
 macOS is ad-hoc signed, not Developer ID signed or notarized.
 Physical burning is Linux-only.
 Read README.txt inside the archive before running. Verify downloads with SHA256SUMS.

@@ -50,7 +50,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev pkg-config build-essential ffmpeg vcdimager cdrdao xvfb xauth
+          sudo apt-get install -y libgtk-3-dev pkg-config build-essential \
+            autoconf automake libtool patch flex bison perl curl xz-utils \
+            libpng-dev zlib1g-dev libcdio-dev libiso9660-dev libpopt-dev \
+            ffmpeg vcdimager cdrdao xvfb xauth
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: brew install gtk+3 adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas pkg-config bash make autoconf automake libtool libpng zlib libcdio popt flex bison gpatch
@@ -93,7 +96,6 @@ jobs:
           xvfb-run -a make test-gtk
           xvfb-run -a make smoke-gtk
       - name: Restore native utility downloads and verified payloads
-        if: runner.os != 'Linux'
         id: utilities
         uses: actions/cache/restore@v4
         with:
@@ -115,13 +117,22 @@ jobs:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
         run: make package
       - name: Save native utility downloads and verified payloads
-        if: always() && runner.os != 'Linux' && steps.utilities.outputs.cache-hit != 'true'
+        if: always() && steps.utilities.outputs.cache-primary-key != '' && steps.utilities.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
             ${{ runner.temp }}/kapila-utilities/downloads
             ${{ runner.temp }}/kapila-utilities/recipe-*/payload
           key: ${{ steps.utilities.outputs.cache-primary-key }}
+      - name: Smoke test the extracted Linux bundle (no physical burn)
+        if: runner.os == 'Linux'
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          relocated=$(mktemp -d "$RUNNER_TEMP/kapila relocated.XXXXXX")
+          trap 'rm -rf -- "$relocated"' EXIT
+          tar -xzf "dist/kapila-maker-$PLATFORM.tar.gz" -C "$relocated"
+          xvfb-run -a python3 scripts/smoke-bundle.py "$relocated/kapila-maker-$PLATFORM"
       - name: Upload executable archive
         uses: actions/upload-artifact@v4
         with:

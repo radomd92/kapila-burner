@@ -120,7 +120,7 @@ func (a *app) construct() {
 	item(d, "burn", "Burn VCD Image...", "Handoro sary VCD...", "", a.burn)
 	sep(d)
 	item(d, "recorders", "Refresh Recorders", "Havaozy ny mpanoratra kapila", "", a.refreshRecorders)
-	item(d, "refresh", "Rescan Media Library", "Hikaroka rakitra indray", "F5", a.scan)
+	item(d, "refresh", "Scan Folder", "Hikaroka ao amin'ny lahatahiry", "F5", a.scan)
 	v := menu("View", "Fijery")
 	item(v, "malagasy", "Malagasy (Plateau)", "Malagasy (Plateau)", "", func() { a.language.SetActiveID("plt") })
 	item(v, "english", "English", "English", "", func() { a.language.SetActiveID("en") })
@@ -172,6 +172,15 @@ func (a *app) construct() {
 	a.language.SetActiveID(a.lang)
 	a.language.Connect("changed", func() { a.setLanguage(a.language.GetActiveID()) })
 	toolbar.PackStart(a.language, false, false, 0)
+	dependencies := box(false, 8)
+	dependencies.SetBorderWidth(8)
+	dependencies.PackStart(a.button("External Tools", "Fitaovana ivelany", a.showTools), false, false, 0)
+	a.tools = plainLabel("")
+	a.tools.SetLineWrap(true)
+	a.tools.SetMaxWidthChars(90)
+	dependencies.PackStart(a.tools, true, true, 0)
+	a.refreshTools()
+	outer.PackStart(dependencies, false, false, 0)
 	a.stack, _ = gtk.StackNew()
 	outer.PackStart(a.stack, true, true, 0)
 	a.welcome = box(true, 18)
@@ -262,7 +271,7 @@ func (a *app) updateActions() {
 		case "burn":
 			enabled = free && a.burnReady() && a.recorder != nil && a.recorder.GetActiveID() != ""
 		case "refresh":
-			enabled = free && !a.scanning
+			enabled = free && a.active && !a.scanning
 		}
 		item.SetSensitive(enabled)
 		if b := a.actionButtons[id]; b != nil {

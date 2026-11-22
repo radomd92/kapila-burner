@@ -328,8 +328,12 @@ func discoverToolsFor(app, bundle, goos string) []Tool {
 		}
 		path := os.Getenv(map[string]string{"ffmpeg": "FFMPEG", "ffprobe": "FFPROBE", "dvda-author": "DVDA_AUTHOR", "mkisofs": "MKISOFS", "vcdimager": "VCDIMAGER", "cdrdao": "CDRDAO"}[name])
 		toolRoot := ""
-		if goos == "windows" || goos == "darwin" {
-			for _, root := range []string{bundle, app} {
+		if name != "cdrdao" {
+			roots := []string{bundle}
+			if goos == "windows" || goos == "darwin" {
+				roots = append(roots, app)
+			}
+			for _, root := range roots {
 				if root == "" {
 					continue
 				}
@@ -565,8 +569,46 @@ func (s *Engine) probe(ctx context.Context, path string) AudioFile {
 	return f
 }
 func (s *Engine) Library(ctx context.Context) ([]AudioFile, error) {
+	return s.scanLibrary(ctx, s.root, false)
+}
+
+// ScanFolder scans only the requested directory inside the configured library.
+// Track paths remain relative to the library root, not to the selected folder.
+func (s *Engine) ScanFolder(ctx context.Context, folder string) ([]AudioFile, error) {
+	folder = filepath.Clean(folder)
+	if !filepath.IsAbs(folder) {
+		folder = filepath.Join(s.root, folder)
+	}
+	if !within(s.root, folder) {
+		return nil, errorf(ctx, "Source is outside the audio library: %s", folder)
+	}
+	rel, _ := filepath.Rel(s.root, folder)
+	dir := s.root
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		if part == "." {
+			continue
+		}
+		dir = filepath.Join(dir, part)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if strings.HasPrefix(part, ".") || within(s.output, dir) || dir == s.app {
+			return nil, errorf(ctx, "Source is outside the audio library: %s", folder)
+		}
+		info, err := os.Lstat(dir)
+		if err != nil {
+			return nil, err
+		}
+		if !info.IsDir() || s.runtimePath(dir) {
+			return nil, errorf(ctx, "Source is outside the audio library: %s", folder)
+		}
+	}
+	return s.scanLibrary(ctx, folder, true)
+}
+
+func (s *Engine) scanLibrary(ctx context.Context, folder string, scoped bool) ([]AudioFile, error) {
 	var paths []string
-	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(folder, func(path string, d fs.DirEntry, err error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -577,6 +619,9 @@ func (s *Engine) Library(ctx context.Context) ([]AudioFile, error) {
 			if s.runtimePath(path) || (path != s.root && (within(s.output, path) || path == s.app || strings.HasPrefix(d.Name(), "."))) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if scoped && !d.Type().IsRegular() {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(path)) {

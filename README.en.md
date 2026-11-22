@@ -19,8 +19,8 @@ Rolling **continuous prerelease**, updated by successful default-branch builds.
 **Bundling transition: verification is pending.** The currently published release
 is the older three-asset `kapila-burner` build with external authoring dependencies.
 The first native CI run failed and the new utilities pipeline is still being tested.
-All seven new `kapila-maker` assets below remain **pending until CI passes and
-publication of all seven assets is confirmed**. The new download links may return
+The new `kapila-maker` assets below remain **pending until CI passes and
+publication is confirmed**. The new download links may return
 404 until then. The Windows/macOS bundle descriptions below describe the new
 packaging, not a verified or already published release.
 
@@ -61,7 +61,7 @@ No ARM executables are published. Physical VCD burning is **Linux-only** and
 requires optional `cdrdao` and explicit confirmation. Physical burning is
 unsupported on Windows/macOS: use an external burning app for ISO or BIN/CUE
 images. That app is **not required to author images**; burning is never automatic.
-Linux still needs system GTK and separately installed authoring tools; see
+Linux bundles the authoring tools but uses system GTK 3 and VCD libraries; see
 [Dependencies](#dependencies).
 
 The Windows installer installs per-user into
@@ -74,8 +74,8 @@ End users of the new Windows/macOS packages need no Homebrew, MSYS2, Go, Python,
 shell, compiler, separate utility installation, or `PATH` setup. CI build tools
 are not end-user requirements.
 
-On publication, `SHA256SUMS` will cover **seven assets**: three portable archives,
-two installers (EXE/DMG), and two corresponding source archives. To check integrity,
+On publication, `SHA256SUMS` will cover **eight assets**: three portable archives,
+two installers (EXE/DMG), and three corresponding source archives. To check integrity,
 download `SHA256SUMS` beside the downloads and use
 `sha256sum --check --ignore-missing SHA256SUMS` on Linux, or
 `shasum -a 256 kapila-maker-macos-amd64.tar.gz` on macOS and compare the value.
@@ -84,16 +84,17 @@ Checksums detect changed downloads; they are **not cryptographic signatures**.
 
 ## Run
 
-The new Windows/macOS bundles find tools relative to the executable and work
+The new bundles find tools relative to the executable and work
 from **any working directory**. The default media root is the user's Music
 folder; output defaults to `kapila-maker/output` under the user's cache directory.
-Explicit `-root` and `-output` flags override these defaults. Source builds and
-Linux retain their existing working-directory defaults (`..` for media and
+Explicit `-root` and `-output` flags override these defaults. Source builds
+retain their existing working-directory defaults (`..` for media and
 `./output` for output) and local tool discovery.
 
 ### Downloaded Executables
 
-On Windows, use the installed shortcut. On macOS, open `kapila-maker.app` from
+On Linux, extract the entire archive and keep `tools/` and `BUILD-UTILITIES.txt`
+beside the executables. On Windows, use the installed shortcut. On macOS, open `kapila-maker.app` from
 Applications. Neither GUI launch requires a terminal. For optional command-line
 use, from an extracted archive on Linux or macOS:
 
@@ -137,7 +138,7 @@ make web
 Open **http://127.0.0.1:8787** in your browser. Keep the terminal running;
 Ctrl-C stops the server and cancels an active job.
 
-Alternatively, use `go run . -root /path/to/media`. For source/Linux builds, available web
+Alternatively, use `go run . -root /path/to/media`. For source builds, available web
 flags are `-root` (default `..`), `-output` (default `./output`), and `-listen`
 (default `127.0.0.1:8787`, loopback addresses only). Use the exact URL printed
 by the server rather than substituting a localhost alias.
@@ -156,9 +157,9 @@ With native GTK 3 available, run a local build:
 ./kapila-maker -root /path/to/media -lang en -project /path/to/project.json
 ```
 
-GTK also accepts `-output`. For source/Linux builds it defaults to `output/`
+GTK also accepts `-output`. For source builds it defaults to `output/`
 under the current directory, and the library root defaults to that directory's
-parent; bundled Windows/macOS defaults are described above. The native,
+parent; bundle defaults are described above. The native,
 Nero/K3b-style workspace starts on a welcome screen with **DVD Audio** and
 **Video CD** choices and an option to open an existing JSON project.
 
@@ -174,10 +175,15 @@ track filenames, durations, source paths, and source-format details. Folder
 navigation/filtering, group and track ordering controls, a capacity meter,
 recorder/speed selectors, and a collapsible **Details & Job Log** keep the
 workflow in one window. Useful shortcuts: `Ctrl+Enter` adds selected sources,
-`Alt+Up` / `Alt+Down` reorders tracks, `Ctrl+B` creates an image, `F5` rescans,
+`Alt+Up` / `Alt+Down` reorders tracks, `Ctrl+B` creates an image, `F5` scans the selected folder,
 and `Ctrl+L` toggles the log. Project editing is locked during jobs; language
 switching and log viewing remain available. GTK Open/Save and web Import/Export
 exchange the same project JSON, not existing disc images.
+
+GTK does not scan at startup or when the folder changes. Open a project, select
+a folder inside `-root`, then click **Scan Folder** to scan it recursively.
+**External Tools** shows readiness before you open a project; click it for paths
+and diagnostics.
 
 To build the optional adapter, typical Debian/Ubuntu build prerequisites are:
 
@@ -269,21 +275,23 @@ to request cancellation; keep the engine alive until the job finishes.
 
 ## Dependencies
 
-**New Windows/macOS bundles (publication and CI verification pending):** all five
+**New release bundles:** all five
 image-authoring executables are bundled, including source-built FFmpeg/FFprobe
 **9.0.2**, VCDImager **2.0.1**, the `dvda-author` core, and genuine DVD-Audio-capable
 `mkisofs`. Pinned versions, source URLs and hashes are recorded in
 [`scripts/utility-sources.tsv`](scripts/utility-sources.tsv), including the pinned
-DVD-Audio and Schilytools commits. GTK and all required non-system libraries/data
-are included too. No system tool installation is needed for image authoring.
+DVD-Audio and Schilytools commits. Windows and macOS also bundle GTK and the
+required non-system libraries/data.
 
-**Linux is unchanged:** install system GTK for the native interface and the five
-external authoring tools below for the relevant disc types. `cdrdao` is optional
+**Linux:** install system GTK 3 for the desktop interface (`libgtk-3-0` on Ubuntu
+22.04, `libgtk-3-0t64` on Ubuntu 24.04). For VCD, install `libcdio19`,
+`libiso9660-11`, and `libpopt0` on Ubuntu 22.04; on Ubuntu 24.04 and Mint 22,
+use `libcdio19t64`, `libiso9660-11t64`, and `libpopt0`. `cdrdao` is optional
 and used only for physical VCD burning, not image authoring. Tool roles:
 
 - `ffprobe` inspects source duration and format; `ffmpeg` converts the first
   audio stream to PCM WAV for DVD-Audio or transcodes video/audio for VCD.
-  On Linux/source builds, both normally come from `PATH`.
+  In source builds, both normally come from `PATH`.
 - `dvda-author` authors DVD-Audio navigation and audio objects.
 - `mkisofs` packages the disc tree and must support genuine `-dvd-audio`.
   A `genisoimage` substitute without that option is not sufficient. This tool
@@ -292,7 +300,7 @@ and used only for physical VCD burning, not image authoring. Tool roles:
 - `cdrdao` is needed only for Linux GTK physical VCD burning or optional drive simulation,
   not image authoring or web downloads.
 
-On Linux/source builds, install the tools required for your chosen disc type separately.
+For source builds, install the tools required for your chosen disc type separately.
 Check the UI's dependency status; do not run the application with sudo.
 
 The optional **local Linux development** `tools/bin/dvda-author` and `tools/bin/mkisofs` launchers use an
@@ -315,9 +323,9 @@ Explicit executable overrides take precedence:
 | `VCDIMAGER` | `vcdimager` |
 | `CDRDAO` | `cdrdao` |
 
-Use absolute executable paths for overrides. New Windows/macOS bundles resolve
+Use absolute executable paths for overrides. Release bundles resolve
 their bundled utilities relative to the executable, independent of `PATH` and
-working directory. For Linux/source builds without overrides, only
+working directory. For Linux source builds without overrides, only
 `dvda-author` and `mkisofs` try `./tools/bin/` before `PATH`; the other tools
 use `PATH`. `dvda-author-dev` is a final fallback for `dvda-author`.
 Dependency status and resolved paths appear in the UI. Restart the chosen
@@ -328,6 +336,7 @@ and tools README remain eligible for version control.
 ### Corresponding Sources
 
 The new release will provide
+[`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 and
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
@@ -348,7 +357,8 @@ matching sources cannot be collected, rather than publish incomplete sources.
 
 ## Make A DVD-Audio Disc
 
-1. Let the recursive library scan finish. Filter by an album or folder name
+1. In GTK, click **Scan Folder** and wait for it to finish. In the web interface,
+   wait for the library scan. Filter by an album or folder name
    to find your input files.
    The filter matches relative paths; it does not change the library root or
    limit the recursive scan. Hidden directories, the application directory,
@@ -479,8 +489,8 @@ per-track estimate.
 ## Output And Persistence
 
 Each authoring job gets a dedicated `disc-*/` directory under the selected output
-root (`output/disc-*/` in source/Linux examples; user cache `kapila-maker/output`
-by default in the new Windows/macOS bundles). DVD-Audio contains:
+root (`output/disc-*/` in source examples; user cache `kapila-maker/output`
+by default in the release bundles). DVD-Audio contains:
 
 ```text
 project.json       project settings, groups, and ordered source paths

@@ -53,6 +53,7 @@ type app struct {
 	files, visible                                               []core.AudioFile
 	libraryLabels                                                []*gtk.Label
 	scanStatus, estimateStatus, jobStatus, tools                 *gtk.Label
+	scannedFolder, scanError                                     string
 	scanProgress                                                 *gtk.ProgressBar
 	build, cancel, rescan                                        *gtk.Button
 	logBuffer                                                    *gtk.TextBuffer
@@ -112,9 +113,6 @@ func Run(engine *core.Engine, options Options) error {
 	a.setLocked(false)
 	if a.active {
 		a.changed()
-	}
-	if !options.Smoke {
-		a.scan()
 	}
 	glib.TimeoutAdd(250, func() bool {
 		if a.closed {
@@ -265,7 +263,11 @@ func (a *app) constructEditor() *gtk.Box {
 	a.folder = entry()
 	a.folder.SetText(a.engine.Root())
 	a.folder.SetTooltipText(a.engine.Root())
-	a.folder.Connect("changed", a.renderLibrary)
+	a.folder.Connect("changed", func() {
+		a.stopScan()
+		a.scanError = ""
+		a.renderLibrary()
+	})
 	navigation := box(false, 4)
 	navigation.PackStart(a.button("Up", "Miakatra", func() {
 		path, _ := a.folder.GetText()
@@ -273,11 +275,13 @@ func (a *app) constructEditor() *gtk.Box {
 			path = filepath.Join(a.engine.Root(), path)
 		}
 		parent := filepath.Dir(filepath.Clean(path))
-		if rel, err := filepath.Rel(a.engine.Root(), parent); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
+		if folderWithin(a.engine.Root(), parent) {
 			a.folder.SetText(parent)
 		}
 	}), false, false, 0)
 	navigation.PackStart(a.folder, true, true, 0)
+	a.rescan = a.button("Scan Folder", "Hikaroka ao amin'ny lahatahiry", a.scan)
+	navigation.PackStart(a.rescan, false, false, 0)
 	left.PackStart(navigation, false, false, 0)
 	quick := box(false, 4)
 	quick.PackStart(a.button("All", "Rehetra", func() { a.folder.SetText(a.engine.Root()) }), false, false, 0)
@@ -294,8 +298,6 @@ func (a *app) constructEditor() *gtk.Box {
 	a.filter = entry()
 	a.bind("Filter paths", "Sivano ny lalan-drakitra", a.filter.SetPlaceholderText)
 	search.PackStart(a.filter, true, true, 0)
-	a.rescan = a.button("Rescan", "Hikaroka indray", a.scan)
-	search.PackStart(a.rescan, false, false, 0)
 	left.PackStart(search, false, false, 0)
 	a.filter.Connect("changed", a.renderLibrary)
 	a.library, _ = gtk.ListBoxNew()
@@ -303,6 +305,8 @@ func (a *app) constructEditor() *gtk.Box {
 	a.library.Connect("row-activated", func() { a.addSelected() })
 	left.PackStart(scroll(a.library), true, true, 0)
 	a.scanStatus = plainLabel("")
+	a.scanStatus.SetLineWrap(true)
+	a.showScanStatus()
 	left.PackStart(a.scanStatus, false, false, 0)
 	a.scanProgress, _ = gtk.ProgressBarNew()
 	left.PackStart(a.scanProgress, false, false, 0)
@@ -361,9 +365,6 @@ func (a *app) constructEditor() *gtk.Box {
 	style(a.capacity, "disc-capacity")
 	outer.PackStart(a.capacity, false, false, 0)
 	outer.PackStart(a.estimateStatus, false, false, 0)
-	a.tools = plainLabel("")
-	a.tools.SetLineWrap(true)
-	a.tools.SetMaxWidthChars(100)
 	jobRow := box(false, 8)
 	a.build = a.button("Create Image", "Hamorona sary kapila", a.start)
 	style(a.build, "primary")
@@ -396,7 +397,6 @@ func (a *app) constructEditor() *gtk.Box {
 	a.logDock, _ = gtk.ExpanderNew("")
 	a.bind("Details & Job Log", "Antsipiriany sy tatitry ny asa", a.logDock.SetLabel)
 	details := box(true, 6)
-	details.PackStart(a.tools, false, false, 0)
 	paths := plainLabel(a.engine.Root() + "\n" + a.engine.Output())
 	paths.SetEllipsize(pango.ELLIPSIZE_MIDDLE)
 	details.PackStart(paths, false, false, 0)
@@ -410,7 +410,6 @@ func (a *app) constructEditor() *gtk.Box {
 		}
 	})
 	a.loadWidgets()
-	a.refreshTools()
 	return outer
 }
 
@@ -563,19 +562,30 @@ func (a *app) renderTracks() {
 	}
 	a.tracks.ShowAll()
 }
+func (a *app) selectedFolder() string {
+	folder, _ := a.folder.GetText()
+	folder = strings.TrimSpace(folder)
+	if folder == "" {
+		return ""
+	}
+	if !filepath.IsAbs(folder) {
+		folder = filepath.Join(a.engine.Root(), folder)
+	}
+	return filepath.Clean(folder)
+}
+
+func folderWithin(root, folder string) bool {
+	if root == "" || folder == "" {
+		return false
+	}
+	rel, err := filepath.Rel(root, folder)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func (a *app) renderLibrary() {
 	query, _ := a.filter.GetText()
 	query = strings.ToLower(query)
-	folder, _ := a.folder.GetText()
-	folder = strings.TrimSpace(folder)
-	if filepath.IsAbs(folder) {
-		if rel, err := filepath.Rel(a.engine.Root(), folder); err == nil {
-			folder = rel
-		}
-	}
-	if folder == "." {
-		folder = ""
-	}
+	folder := a.selectedFolder()
 	clearList(a.library)
 	a.visible = nil
 	a.libraryLabels = nil
@@ -583,7 +593,7 @@ func (a *app) renderLibrary() {
 		if !strings.Contains(strings.ToLower(f.Path), query) {
 			continue
 		}
-		if folder != "" && f.Path != folder && !strings.HasPrefix(f.Path, strings.TrimSuffix(folder, "/")+"/") {
+		if !folderWithin(folder, filepath.Join(a.engine.Root(), filepath.FromSlash(f.Path))) {
 			continue
 		}
 		a.visible = append(a.visible, f)
@@ -596,7 +606,20 @@ func (a *app) renderLibrary() {
 		}
 	}
 	a.library.ShowAll()
-	a.scanStatus.SetText(fmt.Sprintf(a.t("%d / %d files", "%d / %d rakitra"), len(a.visible), len(a.files)))
+	a.showScanStatus()
+}
+
+func (a *app) showScanStatus() {
+	switch {
+	case a.scanning:
+		a.scanStatus.SetText(a.t("Scanning and probing media...", "Mikaroka sy mandinika rakitra..."))
+	case a.scanError != "":
+		a.scanStatus.SetText(a.scanError)
+	case a.scannedFolder == "" || !folderWithin(a.scannedFolder, a.selectedFolder()):
+		a.scanStatus.SetText(a.t("Select Scan Folder to find media here.", "Tsindrio ny bokotra fikarohana hahitana rakitra eto."))
+	default:
+		a.scanStatus.SetText(fmt.Sprintf(a.t("%d / %d files", "%d / %d rakitra"), len(a.visible), len(a.files)))
+	}
 }
 func (a *app) libraryDetail(f core.AudioFile) string {
 	if f.Error != "" {
@@ -683,42 +706,58 @@ func (a *app) removeTrack() {
 }
 
 func (a *app) scan() {
-	if a.locked() {
+	if !a.active || a.locked() || a.scanning {
 		return
 	}
-	if a.scanCancel != nil {
-		a.scanCancel()
+	folder := a.selectedFolder()
+	if folder == "" {
+		return
 	}
 	a.scanRevision++
 	seq := a.scanRevision
 	ctx, cancel := context.WithCancel(a.context())
 	a.scanCancel = cancel
 	a.scanning = true
+	a.scanError = ""
 	a.rescan.SetSensitive(false)
-	a.scanStatus.SetText(a.t("Scanning and probing audio...", "Mikaroka sy mandinika feo..."))
+	a.updateActions()
+	a.showScanStatus()
 	a.work(func() {
-		files, err := a.engine.Library(ctx)
+		files, err := a.engine.ScanFolder(ctx, folder)
 		cancel()
 		a.idle(func() {
 			if seq != a.scanRevision {
 				return
 			}
 			a.scanning = false
+			a.scanCancel = nil
 			a.scanProgress.SetFraction(0)
 			a.rescan.SetSensitive(!a.locked())
+			a.updateActions()
 			if err != nil {
-				if ctx.Err() == context.Canceled && a.ctx.Err() != nil {
-					return
-				}
-				a.scanStatus.SetText(err.Error())
+				a.scanError = err.Error()
+				a.showScanStatus()
 				return
 			}
-			slices.SortStableFunc(files, func(x, y core.AudioFile) int { return strings.Compare(x.Path, y.Path) })
 			a.files = files
+			a.scannedFolder = folder
 			a.renderLibrary()
 			a.renderTracks()
 		})
 	})
+}
+
+func (a *app) stopScan() {
+	if a.scanCancel != nil {
+		a.scanCancel()
+		a.scanCancel = nil
+		a.scanRevision++
+		a.scanning = false
+		a.scanProgress.SetFraction(0)
+		a.rescan.SetSensitive(!a.locked())
+		a.updateActions()
+		a.showScanStatus()
+	}
 }
 
 func (a *app) changed() {
@@ -796,25 +835,43 @@ func (a *app) showEstimate() {
 	}
 }
 func (a *app) refreshTools() {
-	ctx := a.context()
-	lang := a.lang
-	a.work(func() {
-		tools := a.engine.Tools(ctx)
-		a.idle(func() {
-			if lang != a.lang {
-				return
-			}
-			var parts []string
-			for _, t := range tools {
-				state := a.t("ready", "vonona")
-				if !t.Ready {
-					state = a.t("missing/incompatible", "tsy hita/tsy mifanaraka")
-				}
-				parts = append(parts, t.Name+": "+state+" ("+t.Detail+")")
-			}
-			a.tools.SetText(strings.Join(parts, " | "))
-		})
-	})
+	summary, _ := a.toolStatus()
+	a.tools.SetText(summary)
+}
+
+func (a *app) toolStatus() (string, string) {
+	var summary, details []string
+	for _, tool := range a.engine.Tools(a.context()) {
+		status := a.t("ready", "vonona")
+		if !tool.Ready && tool.Path == "" {
+			status = a.t("missing", "tsy hita")
+		} else if !tool.Ready {
+			status = a.t("unavailable", "tsy azo ampiasaina")
+		}
+		name := tool.Name
+		if name == "cdrdao" {
+			name += " (" + a.t("optional", "tsy voatery") + ")"
+		}
+		line := name + ": " + status
+		summary = append(summary, line)
+		if tool.Path != "" {
+			line += "\n" + tool.Path
+		}
+		if !tool.Ready && tool.Detail != "" {
+			line += "\n" + tool.Detail
+		}
+		details = append(details, line)
+	}
+	return strings.Join(summary, "   |   "), strings.Join(details, "\n\n")
+}
+
+func (a *app) showTools() {
+	_, details := a.toolStatus()
+	d := gtk.MessageDialogNew(a.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, "%s", a.t("External Tools", "Fitaovana ivelany"))
+	d.FormatSecondaryText("%s", details)
+	d.AddButton(a.t("Close", "Akatona"), gtk.RESPONSE_CLOSE)
+	defer d.Destroy()
+	d.Run()
 }
 func (a *app) setLanguage(lang string) {
 	if lang != "en" && lang != "plt" && lang != "fr" {
@@ -840,11 +897,7 @@ func (a *app) setLanguage(lang string) {
 	a.showEstimate()
 	a.showJobText()
 	a.updateTitle()
-	if a.scanning {
-		a.scanStatus.SetText(a.t("Scanning and probing audio...", "Mikaroka sy mandinika feo..."))
-	} else {
-		a.scanStatus.SetText(fmt.Sprintf(a.t("%d / %d files", "%d / %d rakitra"), len(a.visible), len(a.files)))
-	}
+	a.showScanStatus()
 }
 
 func (a *app) start() {
@@ -856,12 +909,7 @@ func (a *app) start() {
 	a.pending = true
 	a.setLocked(false)
 	a.showJobText()
-	if a.scanCancel != nil {
-		a.scanCancel()
-		a.scanRevision++
-		a.scanning = false
-		a.scanProgress.SetFraction(0)
-	}
+	a.stopScan()
 	ctx, cancel := context.WithCancel(a.context())
 	a.startCancel = cancel
 	p := cloneProject(a.project)
@@ -990,6 +1038,12 @@ func (a *app) smoke() {
 		a.smokeError = fmt.Errorf("GTK smoke startup project not visible")
 	}
 	a.actions["new-dvd"].Activate()
+	a.folder.SetText(filepath.Join(a.engine.Root(), "selected"))
+	if a.scanRevision != 0 || a.scanning || len(a.files) != 0 {
+		a.smokeError = fmt.Errorf("GTK smoke scanned before authorization")
+	}
+	a.folder.SetText(a.engine.Root())
+	a.scannedFolder = a.engine.Root()
 	a.files = []core.AudioFile{{Path: "smoke-a.wav", Duration: 1, SampleRate: 48000, Channels: 2}, {Path: "smoke-b.wav", Duration: 2, SampleRate: 48000, Channels: 2}, {Path: "invalid.wav", Error: "Synthetic probe error"}}
 	a.renderLibrary()
 	a.library.SelectRow(a.library.GetRowAtIndex(0))
@@ -1048,6 +1102,12 @@ func (a *app) smoke() {
 		}
 		respond(gtk.RESPONSE_CLOSE)
 		a.actions["about"].Activate()
+		status, _ := a.tools.GetText()
+		if !strings.Contains(status, "ffprobe: ") || !strings.Contains(status, "dvda-author: ") {
+			a.smokeError = fmt.Errorf("GTK smoke %s dependency summary missing tools", lang)
+		}
+		respond(gtk.RESPONSE_CLOSE)
+		a.showTools()
 		respond(gtk.RESPONSE_NO)
 		if a.confirm(a.t("Delete this group and its track list? Source files will not be changed.", "Hafafa ity vondrona sy lisitry ny raki-peo ity? Tsy ovaina ny rakitra niaviany.")) {
 			a.smokeError = fmt.Errorf("GTK smoke confirmation response failed")

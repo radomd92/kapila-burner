@@ -18,8 +18,8 @@ Havaozina rehefa mahomby ny CI eo amin'ny sampana fototra ny kinova andrana
 **Mbola miandry fanamarinana CI ny fonosana vaovao.** Ny kinova efa navoaka
 ankehitriny dia ilay `kapila-burner` taloha misy rakitra telo, mbola mila fitaovana
 fanamboarana kapila ivelany. Tsy nahomby ny CI native voalohany ary mbola andramana
-ny pipeline vaovao ho an'ny utilities. **Mbola miandry ireo rakitra vaovao fito
-`kapila-maker` mandra-pahombiazan'ny CI sy fanamafisana fa efa navoaka izy fito.**
+ny pipeline vaovao ho an'ny utilities. **Mbola miandry ireo rakitra vaovao
+`kapila-maker` mandra-pahombiazan'ny CI sy fanamafisana ny famoahana azy.**
 Mety hamerina 404 ireo rohy vaovao mandra-pahatongan'izany. Momba ny fonosana vaovao
 ny fanazavana Windows/macOS eto ambany, fa tsy porofo fa efa voamarina na navoaka.
 
@@ -59,8 +59,8 @@ ary ny fitaovana dimy fanamboarana image ho an'ny interface roa.
 | Windows | Ampiasao ny installer EXE, na tazomy ny **lahatahiry ZIP voavaha manontolo** ary alefaso ny `kapila-maker.exe` / `launch-gtk.cmd`. Ao ny GTK DLL, libraries sy angon-drakitra ilaina; aza afindra irery ny `.exe`. |
 | macOS | Intel macOS 15 na vao haingana kokoa. Sokafy ny DMG ary tariho ao amin'ny Applications ny **`kapila-maker.app`** mahaleo tena, na ampiasao ny tar.gz. Ao ny GTK, libraries sy angon-drakitra ilaina; tsy mila Homebrew. |
 
-Tsy misy kinova ARM avoaka. Amin'ny Linux ihany no mbola ilaina ny GTK avy
-amin'ny rafitra sy ny fitaovana fanamboarana kapila apetraka misaraka.
+Tsy misy kinova ARM avoaka. Ao anatin'ny fonosana Linux ny fitaovana fanamboarana
+kapila; ny GTK sy ny libraries VCD kosa dia avy amin'ny rafitra.
 **Linux ihany** no manohana fandoroana VCD ara-batana, miaraka amin'ny `cdrdao`
 tsy voatery apetraka raha image ihany no atao, sy fanekena mazava.
 Tsy tohanana ny fandoroana amin'ny Windows/macOS: mampiasà rindranasa fandoroana
@@ -77,8 +77,8 @@ rafitra. Tsy mila Homebrew, MSYS2, Go, Python, shell, compiler, fametrahana
 fitaovana misaraka na fanamboarana `PATH` ny mpampiasa Windows/macOS vaovao.
 Ho an'ny fanamboarana CI ihany ireo fitaovana fampandrosoana.
 
-Rehefa avoaka ny vaovao, mandrakotra **rakitra fito** ny `SHA256SUMS`: arisiva
-portable telo, installer roa (EXE/DMG), ary arisiva source roa.
+Rehefa avoaka ny vaovao, mandrakotra **rakitra valo** ny `SHA256SUMS`: arisiva
+portable telo, installer roa (EXE/DMG), ary arisiva source telo.
 Ny SHA-256 dia hanamarinana ny fitovian'ny rakitra alaina amin'ny `SHA256SUMS`,
 fa **tsy sonia kriptografika**. Jereo ny [torolalana fanamarinana](README.en.md#download).
 
@@ -107,11 +107,12 @@ na alefaso ao amin'ny PowerShell:
 ```
 
 Soloy amin'ny toerana misy ny haino aman-jerinao ny `-root`.
-Ny fonosana Windows/macOS vaovao dia mitady fitaovana mifototra amin'ny toerana
+Ny fonosana vaovao dia mitady fitaovana mifototra amin'ny toerana
 misy ny executable, ka mandeha avy amin'ny **lahatahiry iasana rehetra**.
 Ny Music an'ny mpampiasa no tahiry media fanombohana; ao amin'ny cache an'ilay
 mpampiasa, `kapila-maker/output`, ny vokatra. Manolo ireo ny `-root` sy `-output`
-raha voafaritra. Tsy miova ny source/Linux: `..` ho an'ny media, `./output`
+raha voafaritra. Amin'ny Linux, vahao manontolo ny arisiva miaraka amin'ny `tools/`
+sy `BUILD-UTILITIES.txt`. Tsy miova ny build avy amin'ny source: `..` ho an'ny media, `./output`
 ho an'ny vokatra, ary fikarohana fitaovana eo an-toerana araka ny lahatahiry iasana.
 Amin'ny web, sokafy ilay URL aseho, matetika
 **http://127.0.0.1:8787**, ary avelao handeha ny terminal. `Ctrl-C` no mampijanona azy.
@@ -125,17 +126,22 @@ dia tsy ovaina. Ny diarin'asa sy ny hadisoana novokarin'ny rindranasa dia
 mitazona ny teny nampiasaina tamin'ny nanombohan'ilay asa; tsy adika ny
 hafatra manta avy amin'ny fitaovana ivelany.
 
+Amin'ny GTK, tsy mandeha ho azy ny fikarohana rehefa misafidy lahatahiry.
+Sokafy ny tetikasa ary tsindrio **Hikaroka ao amin'ny lahatahiry** mba hitady
+rakitra ao amin'ilay lahatahiry voafidy ao anatin'ny `-root`.
+
 ## Fitaovana Ivelany
 
-Ao amin'ny **fonosana Windows/macOS vaovao, mbola miandry CI sy famoahana**,
+Ao amin'ny **fonosana vaovao, mbola miandry CI sy famoahana**,
 ny fitaovana dimy namboarina avy amin'ny source: FFmpeg/FFprobe **9.0.2**,
 VCDImager **2.0.1**, ny fototra `dvda-author`, ary `mkisofs` tena manohana
 DVD-Audio. Ao amin'ny [utility sources manifest](scripts/utility-sources.tsv)
-ny version/commit voafetra, URL sy SHA-256. Amin'ny **Linux**, mbola apetraka
-misaraka araka ny karazana kapila ireo fitaovana dimy; tsy voatery ny `cdrdao`
-raha tsy mandoro VCD. Jereo ao amin'ny rindranasa ny satan'ny fitaovana.
+ny version/commit voafetra, URL sy SHA-256. Amin'ny **Linux**, jereo ny
+[torolalana](README.en.md#dependencies) momba ny GTK sy libraries VCD avy amin'ny rafitra.
+Tsy voatery ny `cdrdao` raha tsy mandoro VCD. Ao amin'ny GTK, **Fitaovana ivelany**
+no mampiseho ny satan'ny fitaovana sy ny lalany.
 
-| Fampiasana | Fitaovana (apetraka misaraka amin'ny Linux) |
+| Fampiasana | Fitaovana ilaina |
 | --- | --- |
 | Famakiana sy fanovana haino aman-jery | FFmpeg sy FFprobe |
 | DVD-Audio | `dvda-author`; `mkisofs` tena manohana `-dvd-audio` raha mamorona ISO. Tsy ampy ny `genisoimage` tsy manana izany safidy izany. |
@@ -145,13 +151,14 @@ raha tsy mandoro VCD. Jereo ao amin'ny rindranasa ny satan'ny fitaovana.
 Azo faritana amin'ny lalana feno ny `FFMPEG`, `FFPROBE`, `DVDA_AUTHOR`,
 `MKISOFS`, `VCDIMAGER` ary `CDRDAO`. Jereo ny
 [torolalana feno](README.en.md#dependencies) ho an'ny fikarohana fitaovana sy ny fetra.
-Ny fitaovana ao amin'ny fonosana Windows/macOS dia hita mifototra amin'ny
-executable, tsy mila fanamboarana `PATH`; ny Linux/source no mitazona ny
+Ny fitaovana ao amin'ny fonosana dia hita mifototra amin'ny
+executable, tsy mila fanamboarana `PATH`; ny build avy amin'ny source no mitazona ny
 fikarohana `./tools/bin/` sy `PATH` teo aloha.
 
 ### Source Sy Fahazoan-dalana
 
 Havoaka miaraka amin'ny vaovao ny
+[`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 sy
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz),
@@ -199,8 +206,8 @@ Tsy backup an'ireo haino aman-jery ny JSON: mbola ilaina eo amin'ny lalany ny lo
 Tsy ovaina ny loharano. Ao amin'ny `output/disc-*/` ny vokatra sy `project.json`,
 `job.json` ary ny logs; ao amin'ny `output/burn-*/` ny asam-pandoroana.
 Miankina amin'ny output root voafidy ireo lalana ireo: cache an'ny mpampiasa
-`kapila-maker/output` amin'ny fonosana Windows/macOS vaovao, `./output` amin'ny
-source/Linux raha tsy novaina tamin'ny flags.
+`kapila-maker/output` amin'ny fonosana vaovao, `./output` amin'ny
+build avy amin'ny source raha tsy novaina tamin'ny flags.
 Tazonina ny vokatra tsy feno, tsy misy fanadiovana mandeha ho azy na fitohizan'ny
 asa aorian'ny restart. Ho an'ny DVD ISO, manomana toerana avo telo henin'ny PCM,
 miampy elanelana fiarovana. Mampiasà haino aman-jery sy fitaovana azo itokisana:

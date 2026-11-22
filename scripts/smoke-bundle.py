@@ -24,7 +24,13 @@ def main():
                 "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "GDK_PIXBUF_MODULE_FILE"):
         env.pop(key, None)
     system = str(Path(env.get("SYSTEMROOT", "C:/Windows")) / "System32") if suffix else "/usr/bin:/bin:/usr/sbin:/sbin"
-    env["PATH"] = os.pathsep.join((str(executables), str(utilities), system))
+    linux = sys.platform.startswith("linux")
+    if linux:
+        # Keep system tools visible so PATH fallback cannot masquerade as discovery.
+        env["PATH"] = system
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["PATH"] = os.pathsep.join((str(executables), str(utilities), system))
     with tempfile.TemporaryDirectory(prefix="kapila relocated ") as temporary:
         work = Path(temporary)
         media, output = work / "media inputs", work / "output images"
@@ -71,7 +77,9 @@ def main():
             expected = {"ffmpeg", "ffprobe", "dvda-author", "mkisofs", "vcdimager"}
             for tool in status["tools"]:
                 if tool["name"] in expected:
-                    if not tool["ready"] or not Path(tool["path"]).resolve().is_relative_to(stage):
+                    path = Path(tool["path"]).resolve()
+                    if (not tool["ready"] or not path.is_relative_to(stage)
+                            or (linux and path != utilities / tool["name"])):
                         raise RuntimeError(f"Bundled utility unavailable or external: {tool}")
                     expected.remove(tool["name"])
             if expected:

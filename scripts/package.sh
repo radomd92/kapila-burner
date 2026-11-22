@@ -79,12 +79,17 @@ case "$os" in
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
   linux)
+    bash scripts/build-utilities.sh "$package"
     ldd "$package/kapila-maker" > "$package/GTK-LINKAGE.txt"
-    if grep -q 'not found' "$package/GTK-LINKAGE.txt"; then
-      printf 'Missing GTK runtime library\n' >&2
+    ldd "$package/tools/bin/"{ffmpeg,ffprobe,vcdimager,dvda-author,mkisofs} > "$package/UTILITY-LINKAGE.txt"
+    if grep -H 'not found' "$package/GTK-LINKAGE.txt" "$package/UTILITY-LINKAGE.txt" >&2; then
+      printf 'Missing Linux runtime library\n' >&2
       exit 1
     fi
     "$package/kapila-maker" -h
+    tar -czf "dist/$name-sources.tar.gz" -C "$package" SOURCE-ARCHIVES THIRD-PARTY-LICENSES \
+      tools/share/licenses BUILD-UTILITIES.txt GTK-LINKAGE.txt UTILITY-LINKAGE.txt
+    rm -rf -- "$package/SOURCE-ARCHIVES"
     tar -czf "dist/$name.tar.gz" -C dist "$name"
     ;;
 esac

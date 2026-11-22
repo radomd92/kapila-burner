@@ -18,7 +18,7 @@ Préversion continue (`continuous`), actualisée après une CI réussie.
 **Transition en cours : la vérification des nouveaux paquets est en attente.**
 La version actuellement publiée reste l'ancienne `kapila-burner`, avec trois fichiers
 et des outils d'authoring externes. La première CI native a échoué et le nouveau
-pipeline des utilitaires est encore en test. Les sept nouveaux fichiers
+pipeline des utilitaires est encore en test. Les nouveaux fichiers
 `kapila-maker` restent **en attente jusqu'à la réussite de la CI et à la confirmation
 de leur publication complète**. Les nouveaux liens peuvent renvoyer une erreur 404
 d'ici là. Les descriptions des nouveaux paquets ci-dessous ne prouvent pas leur
@@ -58,8 +58,8 @@ outils de création d'images, pour les deux interfaces.
 | Windows | Installez l'EXE ou conservez **tout le dossier ZIP extrait** et lancez `kapila-maker.exe` / `launch-gtk.cmd`, pas un `.exe` déplacé seul. Les DLL GTK, bibliothèques et données sont incluses. |
 | macOS | Intel macOS 15 ou plus récent. Ouvrez le DMG et glissez l'application autonome **`kapila-maker.app`** dans Applications, ou utilisez le tar.gz. GTK, bibliothèques et données sont incluses ; aucun Homebrew requis. |
 
-Aucun exécutable ARM n'est publié. Sous Linux, GTK système et les outils
-d'authoring externes restent nécessaires. La gravure physique de VCD est réservée
+Aucun exécutable ARM n'est publié. Sous Linux, les outils sont inclus ; GTK 3 et
+les bibliothèques VCD restent fournis par le système. La gravure physique de VCD est réservée
 à **Linux**, avec `cdrdao` facultatif et confirmation explicite. La gravure n'est
 pas prise en charge sous Windows/macOS : utilisez un logiciel externe pour graver
 les images. Ce logiciel n'est **pas requis pour créer les images** ; rien n'est
@@ -76,8 +76,8 @@ Windows/macOS n'ont besoin ni de Homebrew, MSYS2, Go, Python, shell, compilateur
 installation d'outils séparée, ni de configuration du `PATH`. Les outils de
 compilation CI ne sont pas des prérequis utilisateur.
 
-Après publication, `SHA256SUMS` couvrira **sept fichiers** : trois archives
-portables, deux installateurs (EXE/DMG) et deux archives de sources correspondantes.
+Après publication, `SHA256SUMS` couvrira **huit fichiers** : trois archives
+portables, deux installateurs (EXE/DMG) et trois archives de sources correspondantes.
 
 Téléchargez `SHA256SUMS` pour vérifier l'intégrité des archives. Sous Linux :
 
@@ -115,11 +115,12 @@ lancez depuis PowerShell :
 .\kapila-maker-web.exe -root C:\Music
 ```
 
-Les nouveaux paquets Windows/macOS trouvent les outils relativement à l'exécutable,
+Les nouveaux paquets trouvent les outils relativement à l'exécutable,
 depuis **n'importe quel répertoire de travail**. Par défaut, les médias viennent du
 dossier Music de l'utilisateur et les sorties vont dans `kapila-maker/output`
 sous son cache utilisateur. `-root` et `-output` remplacent ces valeurs.
-Les compilations source et Linux conservent les anciens défauts relatifs au
+Sous Linux, extrayez l'archive entière avec `tools/` et `BUILD-UTILITIES.txt`.
+Les compilations depuis les sources conservent les anciens défauts relatifs au
 répertoire courant : médias dans `..`, sorties dans `./output` et recherche locale
 des outils. Remplacez la racine des exemples par votre dossier de médias.
 
@@ -148,6 +149,10 @@ modifications non enregistrées. New, Open, Close et Quit proposent
 sont atomiques et Save réutilise le chemin choisi. `-project /path/to/project.json`
 permet d'ouvrir un projet au lancement.
 
+Dans GTK, choisir un dossier ne déclenche aucune analyse. Ouvrez un projet puis
+cliquez sur **Analyser le dossier** pour rechercher les médias dans le dossier
+sélectionné, à l'intérieur de `-root`.
+
 Le web conserve automatiquement le projet dans ce navigateur, mais son stockage
 peut être effacé : exportez les projets importants. GTK Open/Save et web
 Import/Export échangent le même JSON. Ce manifeste n'est **pas une sauvegarde
@@ -155,14 +160,14 @@ des médias** : les sources doivent rester aux mêmes chemins relatifs à la rac
 
 ## Outils Externes
 
-Les **nouveaux paquets Windows/macOS, encore en attente de validation/publication**,
+Les **nouveaux paquets, encore en attente de validation/publication**,
 incluent les cinq outils de création d'images compilés depuis les sources :
 FFmpeg/FFprobe **9.0.2**, VCDImager **2.0.1**, le coeur `dvda-author` et un véritable
 `mkisofs` compatible DVD-Audio. Les versions/commits épinglés, URL et empreintes
 figurent dans le [manifeste des sources](scripts/utility-sources.tsv).
-Sous **Linux**, installez toujours séparément les cinq outils selon le type de
-disque ; `cdrdao` reste facultatif pour la gravure. Leur état et leur chemin
-apparaissent dans l'interface.
+Sous **Linux**, consultez le [guide des dépendances](README.en.md#dependencies)
+pour les bibliothèques système GTK et VCD. `cdrdao` reste facultatif pour la
+gravure. Dans GTK, **Outils externes** affiche l'état, les chemins et les diagnostics.
 
 | Fonction | Outils nécessaires |
 | --- | --- |
@@ -172,9 +177,9 @@ apparaissent dans l'interface.
 | Gravure VCD GTK, Linux uniquement | `cdrdao`, un graveur CD et un CD-R/CD-RW vierge. |
 
 Vous pouvez imposer des chemins absolus avec `FFMPEG`, `FFPROBE`, `DVDA_AUTHOR`,
-`MKISOFS`, `VCDIMAGER` et `CDRDAO`. Les nouveaux paquets Windows/macOS trouvent leurs
+`MKISOFS`, `VCDIMAGER` et `CDRDAO`. Les nouveaux paquets trouvent leurs
 outils inclus relativement à l'exécutable, sans configuration du `PATH`.
-Pour les compilations source/Linux sans surcharge, seuls `dvda-author` et
+Pour les compilations Linux depuis les sources, seuls `dvda-author` et
 `mkisofs` sont recherchés dans `./tools/bin/` avant le `PATH` ; les autres
 utilisent le `PATH`. Redémarrez l'interface après un changement d'outils.
 Consultez le [guide détaillé](README.en.md#dependencies) pour les outils locaux
@@ -183,6 +188,7 @@ facultatifs et leurs limites de portabilité.
 ### Sources Et Licences
 
 Les archives correspondantes
+[`kapila-maker-linux-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-linux-amd64-sources.tar.gz),
 [`kapila-maker-windows-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-windows-amd64-sources.tar.gz)
 et
 [`kapila-maker-macos-amd64-sources.tar.gz`](https://github.com/radomd92/kapila-burner/releases/download/continuous/kapila-maker-macos-amd64-sources.tar.gz)
@@ -196,7 +202,8 @@ manifestes et la reconstruction facultative des utilitaires hors ligne.
 
 ## Créer Un DVD-Audio
 
-1. Choisissez **DVD Audio** et attendez l'analyse récursive de la bibliothèque.
+1. Choisissez **DVD Audio**, puis cliquez sur **Analyser le dossier** dans GTK.
+   Attendez la fin de l'analyse avant de sélectionner les pistes.
 2. Filtrez les fichiers, ajoutez les pistes et réglez leur ordre. Vous pouvez créer jusqu'à neuf groupes de 99 pistes ; les doublons sont autorisés.
 3. Commencez avec **stéréo, 16 bits, 44,1 kHz**, DVD-5 et ISO activé. Vérifiez les estimations de capacité et d'espace de travail.
 4. Lancez **Create Image** dans GTK ou **Build DVD-Audio** dans le web. Le moteur convertit en WAV, crée `AUDIO_TS`, vérifie les fichiers puis produit éventuellement l'ISO.
@@ -253,8 +260,8 @@ ont leur propre dossier `output/burn-*/`. Les échecs et annulations conservent
 les fichiers partiels ; il n'y a pas de nettoyage automatique. `job.json` est
 écrit à la fin, avec un journal limité aux 600 dernières lignes.
 Ces chemins sont relatifs à la racine de sortie choisie : par défaut, cache
-utilisateur `kapila-maker/output` pour les nouveaux paquets Windows/macOS,
-`./output` pour les compilations source/Linux.
+utilisateur `kapila-maker/output` pour les nouveaux paquets,
+`./output` pour les compilations depuis les sources.
 
 Pour un DVD ISO, prévoyez environ **trois fois la taille du PCM**, plus une
 marge : intermédiaires, arborescence et ISO coexistent. Le moteur contrôle

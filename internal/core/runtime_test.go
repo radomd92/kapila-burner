@@ -25,7 +25,7 @@ func TestBundledDiscovery(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake tools use POSIX scripts")
 	}
-	for _, layout := range []string{"darwin", "windows", "darwin-app"} {
+	for _, layout := range []string{"linux", "darwin", "windows", "darwin-app"} {
 		t.Run(layout, func(t *testing.T) {
 			goos := strings.TrimSuffix(layout, "-app")
 			bundle, app := t.TempDir(), t.TempDir()
@@ -56,11 +56,11 @@ func TestBundledDiscovery(t *testing.T) {
 				t.Helper()
 				t.Setenv("EXPECTED_BUNDLE", wantRoot)
 				tools := discoverToolsFor(app, bundle, goos)
-				if len(tools) != 5 {
-					t.Fatalf("non-Linux bundles must list exactly five required authoring tools: %+v", tools)
-				}
 				for _, tool := range tools {
 					if tool.Name == "cdrdao" {
+						if goos != "linux" || tool.bundleRoot != "" {
+							t.Fatalf("unexpected bundled recorder tool: %+v", tool)
+						}
 						continue
 					}
 					if !tool.Ready || tool.Path != filepath.Join(runtimeenv.ToolDir(wantRoot), tool.Name+suffix) || tool.bundleRoot != wantRoot {
@@ -72,7 +72,9 @@ func TestBundledDiscovery(t *testing.T) {
 			if err := os.RemoveAll(runtimeenv.ToolDir(bundle)); err != nil {
 				t.Fatal(err)
 			}
-			check(app)
+			if goos != "linux" {
+				check(app)
+			}
 			custom := filepath.Join(t.TempDir(), "custom")
 			writeRuntimeTool(t, custom, "exit 0\n")
 			t.Setenv("FFMPEG", custom)

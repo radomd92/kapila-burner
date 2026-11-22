@@ -13,16 +13,23 @@ import (
 )
 
 // BundleRoot is executable-relative, never working-directory-relative.
-// Linux continues to use its existing launcher contract.
 func BundleRoot() string {
-	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		return ""
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		return ""
 	}
-	return bundleRoot(exe)
+	root := bundleRoot(exe)
+	if runtime.GOOS == "linux" && root != "" {
+		// A development checkout also has tools/bin, but only packaged builds
+		// have the utility build record alongside the executables.
+		if info, err := os.Stat(filepath.Join(root, "BUILD-UTILITIES.txt")); err != nil || !info.Mode().IsRegular() {
+			return ""
+		}
+	}
+	return root
 }
 
 func bundleRoot(exe string) string {
@@ -141,6 +148,10 @@ func CommandEnv(root string) []string {
 // Configure must run before GTK initialization (gtk=true) or engine creation.
 // The returned cleanup removes any private, dynamically generated loader cache.
 func Configure(gtk bool) (func(), error) {
+	if runtime.GOOS == "linux" {
+		// Linux uses system GTK; only individual utility subprocesses need the bundle PATH.
+		return func() {}, nil
+	}
 	return configure(BundleRoot(), gtk)
 }
 
